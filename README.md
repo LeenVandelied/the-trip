@@ -1,6 +1,6 @@
 # The Trip
 
-Mini-site privé pour organiser un roadtrip moto de 7 jours entre potes.
+Mini-site pour organiser un roadtrip moto de 7 jours entre potes — accès par lien direct, pseudo libre, pas d'auth.
 
 ## Stack cible
 - Next.js 15 (App Router) + TypeScript strict
@@ -56,16 +56,23 @@ Expense(id, label, amountEur, perPerson: bool)
 - Pas de multi-trip
 - Pas de pagination
 
-## Points laissés ouverts (Claude Code pourra demander)
-- Formule exacte "plage gagnante" (majorité YES ? YES+MAYBE pondéré ? quorum min ?)
-- Règle de départage en cas d'égalité de score sur les GPX d'un jour
-- Limite taille upload GPX
-- Choix final des tuiles carte (CartoDB Dark Matter vs Stadia Outdoors — laisser Claude trancher au regard du visuel Claude Design)
-- Champs exacts du VEVENT iCal (summary, location, description par jour)
-- Valeurs par défaut conso/prix si user n'a rien saisi
+## Décisions tranchées (anciennement "points ouverts")
+- **Plage gagnante** : `max(YES count)`, tie-break par `YES + 0.5*MAYBE`, puis `createdAt asc`. Cf. `src/lib/winners.ts:dateProposalWinner`.
+- **Tie-break GPX** : score `(UP − DOWN)` desc, puis `createdAt asc`. Cf. `src/lib/winners.ts:routeWinner`.
+- **Limite upload GPX** : 2 MB (`MAX_GPX_BYTES` dans `src/lib/constants.ts`).
+- **Tuiles carte** : CartoDB Dark Matter (matche la vibe kraft sombre). Cf. `src/components/leaflet-map.tsx`.
+- **VEVENT iCal** : `SUMMARY="J{n} · {km}km — {route.name}"`, `LOCATION=lat,lng` (fin de tracé), `DESCRIPTION=name + km/D+ + météo + POI`. Cf. `src/app/actions/ical.ts`.
+- **Défauts conso/prix** : 5.5 L/100, 1.92 €/L (`DEFAULT_CONSO_L100`, `DEFAULT_FUEL_PRICE` dans `src/lib/constants.ts`).
+
+## Stack effective (réalité ≠ brief)
+- Next.js **16** (le brief disait 15 — `create-next-app@latest` installe 16, rétro-compatible sur nos usages)
+- Tailwind v4 ✓ — mais le visuel kraft/ambre est principalement dans `src/app/globals.css` (custom CSS) + styles inline par écran
+- Prisma **v6** (la v7 a une nouvelle API config externe, on s'en passe)
+- Carte : `react-leaflet` + parsing GPX via `@we-gold/gpxjs` → `<Polyline>` (pas de `leaflet-gpx`)
+- Identité : cookie httpOnly `tt_user` stockant `user.id` (pas de localStorage)
 
 ## Workflow
 1. Brainstorm (fait — voir ce README)
 2. UI via Claude Design (prompt dans `claude-design-prompt.md`)
-3. Code en local (Claude Code reprend ce repo)
+3. Code en local (Claude Code reprend ce repo) — **en cours**
 4. Deploy Vercel + Neon

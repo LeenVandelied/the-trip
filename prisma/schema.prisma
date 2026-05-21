@@ -1,0 +1,118 @@
+// Prisma schema — The Trip
+// Stack: Neon Postgres. Single-trip per deploy (TRIP_SLUG env).
+// No multi-trip in DB; one row = one entity in this trip.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                   String          @id @default(cuid())
+  name                 String          @unique
+  motoModel            String?
+  motoConsumption_L100 Float?          // L/100km
+  fuelPrice            Float?          // €/L user-scoped
+  createdAt            DateTime        @default(now())
+
+  availabilities       Availability[]
+  places               Place[]
+  placeVotes           PlaceVote[]
+  routes               Route[]
+  routeVotes           RouteVote[]
+}
+
+model DateProposal {
+  id             String          @id @default(cuid())
+  startDate      DateTime
+  endDate        DateTime
+  createdAt      DateTime        @default(now())
+
+  availabilities Availability[]
+}
+
+enum AvailabilityStatus {
+  YES
+  MAYBE
+  NO
+}
+
+model Availability {
+  userId          String
+  dateProposalId  String
+  status          AvailabilityStatus
+
+  user            User           @relation(fields: [userId],         references: [id], onDelete: Cascade)
+  dateProposal    DateProposal   @relation(fields: [dateProposalId], references: [id], onDelete: Cascade)
+
+  @@id([userId, dateProposalId])
+}
+
+model Place {
+  id          String       @id @default(cuid())
+  userId      String        // proposed by
+  lat         Float
+  lng         Float
+  name        String
+  description String?
+  createdAt   DateTime     @default(now())
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  votes       PlaceVote[]
+}
+
+enum VoteValue {
+  UP
+  DOWN
+}
+
+model PlaceVote {
+  userId    String
+  placeId   String
+  value     VoteValue
+
+  user      User      @relation(fields: [userId],  references: [id], onDelete: Cascade)
+  place     Place     @relation(fields: [placeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, placeId])
+}
+
+model Route {
+  id            String       @id @default(cuid())
+  userId        String        // proposed by
+  dayNumber     Int           // 1..7
+  name          String
+  gpxContent    String        // raw .gpx XML
+  distanceKm    Float
+  elevationM    Float
+  durationSec   Int?
+  createdAt     DateTime     @default(now())
+
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  votes         RouteVote[]
+
+  @@index([dayNumber])
+}
+
+model RouteVote {
+  userId    String
+  routeId   String
+  value     VoteValue
+
+  user      User      @relation(fields: [userId],  references: [id], onDelete: Cascade)
+  route     Route     @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, routeId])
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  label       String
+  amountEur   Float
+  perPerson   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
