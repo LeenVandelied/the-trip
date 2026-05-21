@@ -11,6 +11,13 @@ import {
 
 type Expense = { id: string; label: string; amountEur: number; perPerson: boolean };
 
+type LodgingWinner = {
+  id: string;
+  title: string | null;
+  priceEur: number;
+  nightCount: number | null;
+};
+
 export function BudgetView({
   me,
   defaults,
@@ -18,6 +25,7 @@ export function BudgetView({
   tripDays,
   headcount,
   expenses,
+  lodgingWinner,
 }: {
   me: { id: string; motoModel: string; conso: number; fuelPrice: number } | null;
   defaults: { conso: number; fuelPrice: number };
@@ -25,6 +33,7 @@ export function BudgetView({
   tripDays: number;
   headcount: number;
   expenses: Expense[];
+  lodgingWinner: LodgingWinner | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -83,6 +92,8 @@ export function BudgetView({
 
   // Compute per-person cost from current form values (live preview).
   const fuel = Math.round(totalKm * (conso / 100) * fuelPrice);
+  const lodgingTotal = lodgingWinner ? lodgingWinner.priceEur : 0;
+  const lodgingPerHead = Math.round(lodgingTotal / headcount);
   const sharedTotal = expenses
     .filter((e) => !e.perPerson)
     .reduce((acc, e) => acc + e.amountEur, 0);
@@ -90,10 +101,11 @@ export function BudgetView({
     .filter((e) => e.perPerson)
     .reduce((acc, e) => acc + e.amountEur, 0);
   const sharedPerHead = sharedTotal / headcount;
-  const total = Math.round(fuel + sharedPerHead + perPersonAlready);
+  const total = Math.round(fuel + lodgingPerHead + sharedPerHead + perPersonAlready);
 
   const segs = [
     { k: "Carburant", v: fuel, c: "#f0a830" },
+    { k: "Logement", v: lodgingPerHead, c: "#5aa9e6" },
     { k: "Partagé", v: Math.round(sharedPerHead), c: "#d96b3a" },
     { k: "Perso", v: Math.round(perPersonAlready), c: "#7fb069" },
   ].filter((s) => s.v > 0);
@@ -302,7 +314,18 @@ export function BudgetView({
         <div className="dash-rule" />
         <p className="note coord">
           NOTE · Carburant = km (GPX en tête) × conso/100 × prix essence (tes paramètres).
-          Partagé = somme des dépenses non-perso / nb motards.
+          {lodgingWinner ? (
+            <>
+              {" "}Logement = «&nbsp;
+              <strong style={{ color: "var(--ink-dim)" }}>
+                {lodgingWinner.title ?? "logement en tête"}
+              </strong>
+              &nbsp;» ({lodgingWinner.priceEur}&nbsp;€{lodgingWinner.nightCount ? ` / ${lodgingWinner.nightCount} nuit${lodgingWinner.nightCount > 1 ? "s" : ""}` : ""}) ÷ {headcount} motard{headcount > 1 ? "s" : ""}.
+            </>
+          ) : (
+            " Logement = non comptabilisé (pas de logement avec prix renseigné sur /lodging)."
+          )}
+          {" "}Partagé = somme des dépenses non-perso / nb motards.
         </p>
       </div>
 

@@ -1,17 +1,18 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/current-user";
-import { routeWinner } from "@/lib/winners";
+import { routeWinner, winningPricedLodging } from "@/lib/winners";
 import { BudgetView } from "@/screens/budget-view";
 import { DEFAULT_CONSO_L100, DEFAULT_FUEL_PRICE, TRIP_DAYS } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
 export default async function BudgetPage() {
-  const [me, routes, expenses, users] = await Promise.all([
+  const [me, routes, expenses, users, lodgings] = await Promise.all([
     getCurrentUser(),
     prisma.route.findMany({ include: { votes: true } }),
     prisma.expense.findMany({ orderBy: { createdAt: "asc" } }),
     prisma.user.findMany(),
+    prisma.lodging.findMany({ include: { votes: true } }),
   ]);
 
   // Sum the winning distance per day.
@@ -26,6 +27,8 @@ export default async function BudgetPage() {
     const w = routeWinner(arr);
     if (w) totalKm += w.distanceKm;
   }
+
+  const lodgingWinner = winningPricedLodging(lodgings);
 
   return (
     <BudgetView
@@ -49,6 +52,16 @@ export default async function BudgetPage() {
         amountEur: e.amountEur,
         perPerson: e.perPerson,
       }))}
+      lodgingWinner={
+        lodgingWinner
+          ? {
+              id: lodgingWinner.id,
+              title: lodgingWinner.title,
+              priceEur: lodgingWinner.priceEur!,
+              nightCount: lodgingWinner.nightCount,
+            }
+          : null
+      }
     />
   );
 }

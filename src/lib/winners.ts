@@ -5,6 +5,8 @@ import type {
   AvailabilityStatus,
   DateProposal,
   Availability,
+  Lodging,
+  LodgingVote,
   Route,
   RouteVote,
   VoteValue,
@@ -51,6 +53,25 @@ export function dateProposalWinner(
     return a.p.createdAt.getTime() - b.p.createdAt.getTime();
   });
   return counted[0]!.p;
+}
+
+export type LodgingWithVotes = Lodging & { votes: LodgingVote[] };
+
+export function lodgingScore(l: LodgingWithVotes): number {
+  let s = 0;
+  for (const v of l.votes) s += v.value === ("UP" as VoteValue) ? 1 : -1;
+  return s;
+}
+
+/** Top-voted lodging with priceEur set. Tie-break: score desc, then createdAt asc. */
+export function winningPricedLodging(lodgings: LodgingWithVotes[]): LodgingWithVotes | null {
+  const priced = lodgings.filter((l) => l.priceEur != null && l.priceEur >= 0);
+  if (priced.length === 0) return null;
+  return [...priced].sort((a, b) => {
+    const ds = lodgingScore(b) - lodgingScore(a);
+    if (ds !== 0) return ds;
+    return a.createdAt.getTime() - b.createdAt.getTime();
+  })[0]!;
 }
 
 export function countByStatus(p: DateProposalWithAvail): { yes: number; maybe: number; no: number } {

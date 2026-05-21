@@ -67,6 +67,67 @@ export async function proposeLodgingAction(
   }
 }
 
+export type UpdateLodgingInput = {
+  id: string;
+  priceEur?: number | null;
+  nightCount?: number | null;
+  addressText?: string | null;
+};
+
+export async function updateLodgingAction(
+  input: UpdateLodgingInput,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const user = await requireCurrentUser();
+    const current = await prisma.lodging.findUnique({ where: { id: input.id } });
+    if (!current) return { ok: false, error: "Logement introuvable" };
+    if (current.userId !== user.id) {
+      return { ok: false, error: "Tu peux éditer uniquement les logements que tu as proposés" };
+    }
+
+    const priceEur =
+      input.priceEur != null && Number.isFinite(input.priceEur) && input.priceEur >= 0
+        ? input.priceEur
+        : null;
+    const nightCount =
+      input.nightCount != null && Number.isInteger(input.nightCount) && input.nightCount > 0
+        ? input.nightCount
+        : null;
+    const addressText = input.addressText?.trim() || null;
+
+    // Re-geocode only when the address actually changed.
+    let lat = current.lat;
+    let lng = current.lng;
+    let storedAddress = addressText ?? current.addressText;
+    if (addressText && addressText !== current.addressText) {
+      const geo = await geocode(addressText);
+      if (geo) {
+        lat = geo.lat;
+        lng = geo.lng;
+        storedAddress = geo.displayName;
+      } else {
+        lat = null;
+        lng = null;
+      }
+    } else if (addressText === null) {
+      lat = null;
+      lng = null;
+      storedAddress = null;
+    }
+
+    await prisma.lodging.update({
+      where: { id: input.id },
+      data: { priceEur, nightCount, addressText: storedAddress, lat, lng },
+    });
+
+    revalidatePath("/lodging");
+    revalidatePath("/budget");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Erreur" };
+  }
+}
+
 export async function voteLodgingAction(
   lodgingId: string,
   value: VoteValue | null,

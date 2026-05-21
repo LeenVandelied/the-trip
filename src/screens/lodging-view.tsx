@@ -6,9 +6,19 @@ import { Avatar } from "@/components/avatar";
 import { VoteButtons, type Vote } from "@/components/vote-buttons";
 import {
   proposeLodgingAction,
+  updateLodgingAction,
   voteLodgingAction,
   deleteLodgingAction,
 } from "@/app/actions/lodgings";
+
+function isAirbnbUrl(s: string): boolean {
+  try {
+    const h = new URL(s).hostname.toLowerCase();
+    return h.includes("airbnb.");
+  } catch {
+    return false;
+  }
+}
 
 export type LodgingLite = {
   id: string;
@@ -54,12 +64,31 @@ export function LodgingView({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [showAdd, setShowAdd] = useState(false);
+  // Form is shared between "add" and "edit". When editing, `editId` holds the lodging id;
+  // when adding, it's null and `url` is editable.
+  const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const [url, setUrl] = useState("");
   const [price, setPrice] = useState<string>("");
   const [nights, setNights] = useState<string>("");
   const [address, setAddress] = useState("");
   const [err, setErr] = useState<string | null>(null);
+
+  const openAdd = () => {
+    setEditId(null);
+    setUrl(""); setPrice(""); setNights(""); setAddress("");
+    setErr(null);
+    setShowForm(true);
+  };
+  const openEdit = (l: LodgingLite) => {
+    setEditId(l.id);
+    setUrl(l.url);
+    setPrice(l.priceEur != null ? String(l.priceEur) : "");
+    setNights(l.nightCount != null ? String(l.nightCount) : "");
+    setAddress(l.addressText ?? "");
+    setErr(null);
+    setShowForm(true);
+  };
 
   const sorted = [...lodgings].sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
@@ -70,14 +99,17 @@ export function LodgingView({
     if (!meId) { router.push("/"); return; }
     setErr(null);
     startTransition(async () => {
-      const res = await proposeLodgingAction({
-        url: url.trim(),
+      const payload = {
         priceEur: price ? +price : null,
         nightCount: nights ? +nights : null,
         addressText: address.trim() || null,
-      });
+      };
+      const res = editId
+        ? await updateLodgingAction({ id: editId, ...payload })
+        : await proposeLodgingAction({ url: url.trim(), ...payload });
       if (!res.ok) { setErr(res.error); return; }
-      setShowAdd(false);
+      setShowForm(false);
+      setEditId(null);
       setUrl(""); setPrice(""); setNights(""); setAddress("");
       router.refresh();
     });
@@ -109,7 +141,7 @@ export function LodgingView({
         </div>
         <div className="meta" style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
           <span>{sorted.length} PROPOSITION{sorted.length > 1 ? "S" : ""}</span>
-          <button className="btn btn-primary btn-sm" onClick={() => meId ? setShowAdd(true) : router.push("/")}>
+          <button className="btn btn-primary btn-sm" onClick={() => meId ? openAdd() : router.push("/")}>
             ＋ Proposer
           </button>
         </div>
@@ -124,7 +156,7 @@ export function LodgingView({
               Colle un lien Airbnb, Booking, hôtel, gîte, ce que tu veux.
             </div>
           </div>
-          <button className="btn btn-primary" onClick={() => meId ? setShowAdd(true) : router.push("/")}>
+          <button className="btn btn-primary" onClick={() => meId ? openAdd() : router.push("/")}>
             ＋ Proposer un logement
           </button>
         </div>
@@ -188,6 +220,9 @@ export function LodgingView({
                     {l.userId === meId && (
                       <>
                         <span style={{ flex: 1 }} />
+                        <button className="btn btn-ghost btn-sm" onClick={() => openEdit(l)} disabled={pending}>
+                          Éditer
+                        </button>
                         <button className="btn btn-ghost btn-sm" onClick={() => remove(l.id)} disabled={pending}>
                           ✕
                         </button>
@@ -201,12 +236,16 @@ export function LodgingView({
         </div>
       )}
 
-      {showAdd && (
-        <div className="modal-bg" onClick={() => !pending && setShowAdd(false)}>
+      {showForm && (
+        <div className="modal-bg" onClick={() => !pending && setShowForm(false)}>
           <div className="modal card plated" onClick={(e) => e.stopPropagation()}>
             <span className="corners" />
-            <div className="eyebrow" style={{ marginBottom: 6 }}>NOUVEAU LOGEMENT</div>
-            <h3 style={{ fontSize: 22, marginBottom: 18 }}>Colle un lien</h3>
+            <div className="eyebrow" style={{ marginBottom: 6 }}>
+              {editId ? "ÉDITER LE LOGEMENT" : "NOUVEAU LOGEMENT"}
+            </div>
+            <h3 style={{ fontSize: 22, marginBottom: 18 }}>
+              {editId ? "Mets à jour les infos" : "Colle un lien"}
+            </h3>
             <label className="field">
               <span className="lbl">URL (Airbnb, Booking, hôtel, gîte…)</span>
               <input
@@ -214,10 +253,24 @@ export function LodgingView({
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://www.airbnb.com/rooms/..."
-                disabled={pending}
-                autoFocus
+                disabled={pending || !!editId}
+                autoFocus={!editId}
               />
             </label>
+            {isAirbnbUrl(url) && (
+              <div
+                className="coord"
+                style={{
+                  marginTop: 8,
+                  padding: "8px 10px",
+                  border: "1px dashed var(--accent-line)",
+                  color: "var(--ink-dim)",
+                  borderRadius: 2,
+                }}
+              >
+                💡 Airbnb cache le prix aux bots — pense à le saisir manuellement ci-dessous.
+              </div>
+            )}
             <div className="dual" style={{ marginTop: 12 }}>
               <label className="field">
                 <span className="lbl">Prix total (€, optionnel)</span>
@@ -243,11 +296,15 @@ export function LodgingView({
             )}
             <div className="dash-rule" />
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <button className="btn btn-ghost" onClick={() => setShowAdd(false)} disabled={pending}>
+              <button className="btn btn-ghost" onClick={() => setShowForm(false)} disabled={pending}>
                 Annuler
               </button>
-              <button className="btn btn-primary" onClick={submit} disabled={pending || !url.trim()}>
-                {pending ? "…" : "Ajouter"}
+              <button
+                className="btn btn-primary"
+                onClick={submit}
+                disabled={pending || (!editId && !url.trim())}
+              >
+                {pending ? "…" : editId ? "Enregistrer" : "Ajouter"}
               </button>
             </div>
           </div>
