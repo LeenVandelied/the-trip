@@ -3,13 +3,10 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
+import { Avatar } from "@/components/avatar";
 import { VoteButtons, type Vote } from "@/components/vote-buttons";
 import { DAY_COLORS } from "@/lib/constants";
-import {
-  createPlaceAction,
-  votePlaceAction,
-  deletePlaceAction,
-} from "@/app/actions/places";
+import { voteRouteAction } from "@/app/actions/routes";
 
 const LeafletMap = dynamic(
   () => import("@/components/leaflet-map").then((m) => m.LeafletMap),
@@ -37,138 +34,98 @@ function MapLoading() {
   );
 }
 
-type PlaceLite = {
+type RouteLite = {
   id: string;
-  lat: number;
-  lng: number;
   name: string;
-  description: string | null;
+  gpxContent: string;
+  roadGeoJson: string | null;
+  distanceKm: number;
+  elevationM: number;
+  durationSec: number | null;
   userId: string;
+  createdAtISO: string;
   score: number;
   upCount: number;
   downCount: number;
   myVote: "UP" | "DOWN" | null;
 };
 
-type DayGpx = { id: string; name: string; gpxContent: string };
-
 export function MapView({
   meId,
   userById,
   tripDays,
-  places,
-  winnerGpxByDay,
+  routesByDay,
 }: {
   meId: string | null;
   userById: Record<string, string>;
   tripDays: number;
-  places: PlaceLite[];
-  winnerGpxByDay: Record<number, DayGpx>;
+  routesByDay: Record<number, RouteLite[]>;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [tab, setTab] = useState<"places" | "gpx">("places");
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [sheetOpen, setSheetOpen] = useState(true);
 
-  const [adding, setAdding] = useState<{ lat: number; lng: number } | null>(null);
-  const [addName, setAddName] = useState("");
-  const [addDesc, setAddDesc] = useState("");
-  const [err, setErr] = useState<string | null>(null);
-
-  const onMapClick = (lat: number, lng: number) => {
-    if (!meId) {
-      router.push("/");
-      return;
-    }
-    setAdding({ lat, lng });
-    setAddName("");
-    setAddDesc("");
-    setErr(null);
-  };
-
-  const submitPlace = () => {
-    if (!adding) return;
-    setErr(null);
-    startTransition(async () => {
-      const res = await createPlaceAction(adding.lat, adding.lng, addName, addDesc);
-      if (!res.ok) {
-        setErr(res.error);
-        return;
-      }
-      setAdding(null);
-      router.refresh();
-    });
-  };
-
-  const vote = (id: string, v: Vote) => {
+  const vote = (routeId: string, v: Vote) => {
     if (!meId) {
       router.push("/");
       return;
     }
     startTransition(async () => {
-      await votePlaceAction(id, v === "yes" ? "UP" : v === "no" ? "DOWN" : null);
+      await voteRouteAction(routeId, v === "yes" ? "UP" : v === "no" ? "DOWN" : null);
       router.refresh();
     });
   };
 
-  const removePlace = (id: string) => {
-    if (!confirm("Supprimer ce lieu ?")) return;
-    startTransition(async () => {
-      const res = await deletePlaceAction(id);
-      if (!res.ok) {
-        alert(res.error);
-        return;
-      }
-      router.refresh();
-    });
-  };
+  const dayHasRoutes = (n: number) => (routesByDay[n]?.length ?? 0) > 0;
+  const selectedRoutes = selectedDay ? routesByDay[selectedDay] ?? [] : [];
+
+  // For the LeafletMap, strip the heavy gpxContent for routes that already have roadGeoJson
+  // so the JSON we ship is smaller — Leaflet doesn't need both.
+  const lightRoutesByDay = Object.fromEntries(
+    Object.entries(routesByDay).map(([day, arr]) => [
+      day,
+      arr.map((r) => ({
+        id: r.id,
+        name: r.name,
+        gpxContent: r.roadGeoJson ? "" : r.gpxContent,
+        roadGeoJson: r.roadGeoJson,
+      })),
+    ]),
+  );
 
   return (
     <div className="map-screen">
       <div className="map-canvas">
-        <LeafletMap
-          places={places.map((p) => ({
-            id: p.id,
-            lat: p.lat,
-            lng: p.lng,
-            name: p.name,
-            score: p.score,
-          }))}
-          winnerGpxByDay={winnerGpxByDay}
-          highlightDay={selectedDay}
-          onMapClick={onMapClick}
-          onPlaceClick={() => {}}
-        />
+        <LeafletMap routesByDay={lightRoutesByDay} highlightDay={selectedDay} />
 
-        <div className="map-fab-hint">
-          {meId ? "Clic sur la carte pour ajouter un lieu" : "Embarque pour ajouter des lieux"}
-        </div>
-
-        {Object.keys(winnerGpxByDay).length > 0 && (
-          <div className="map-legend card">
-            <div className="eyebrow" style={{ marginBottom: 8 }}>JOURS — TRACÉ</div>
-            <div className="legend-grid">
-              {Array.from({ length: tripDays }).map((_, i) => {
-                const day = i + 1;
-                const has = !!winnerGpxByDay[day];
-                return (
-                  <button
-                    key={day}
-                    className={
-                      "legend-chip " + (selectedDay === day ? "on " : "") + (has ? "" : "ghost")
-                    }
-                    onClick={() => has && setSelectedDay(selectedDay === day ? null : day)}
-                    disabled={!has}
-                    style={{ ["--c" as string]: DAY_COLORS[i] } as React.CSSProperties}
-                  >
-                    <span className="lc-dot" />J{day}
-                  </button>
-                );
-              })}
-            </div>
+        <div className="map-legend card">
+          <div className="eyebrow" style={{ marginBottom: 8 }}>JOURS</div>
+          <div className="legend-grid">
+            {Array.from({ length: tripDays }).map((_, i) => {
+              const day = i + 1;
+              const has = dayHasRoutes(day);
+              return (
+                <button
+                  key={day}
+                  className={
+                    "legend-chip " + (selectedDay === day ? "on " : "") + (has ? "" : "ghost")
+                  }
+                  onClick={() => has && setSelectedDay(selectedDay === day ? null : day)}
+                  disabled={!has}
+                  style={{ ["--c" as string]: DAY_COLORS[i] } as React.CSSProperties}
+                >
+                  <span className="lc-dot" />J{day}
+                  {has && (
+                    <span className="lc-count">
+                      {routesByDay[day]!.length}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
-        )}
+        </div>
 
         {!sheetOpen && (
           <button className="sheet-toggle" onClick={() => setSheetOpen(true)}>
@@ -179,174 +136,87 @@ export function MapView({
 
       <aside className={"map-aside " + (sheetOpen ? "open" : "closed")}>
         <div className="aside-head">
-          <span className="eyebrow">PANNEAU</span>
+          <span className="eyebrow">ITINÉRAIRES</span>
           <button className="btn btn-ghost btn-sm" onClick={() => setSheetOpen(false)}>✕</button>
         </div>
 
-        <div className="aside-tabs">
-          <button
-            className={"aside-tab " + (tab === "places" ? "on" : "")}
-            onClick={() => setTab("places")}
-          >
-            Lieux <span className="count">{places.length}</span>
-          </button>
-          <button
-            className={"aside-tab " + (tab === "gpx" ? "on" : "")}
-            onClick={() => setTab("gpx")}
-          >
-            GPX par jour
-          </button>
-        </div>
+        <div className="aside-body">
+          <div className="day-pills">
+            {Array.from({ length: tripDays }).map((_, i) => {
+              const day = i + 1;
+              const has = dayHasRoutes(day);
+              return (
+                <button
+                  key={day}
+                  className={"day-pill " + (selectedDay === day ? "on " : "") + (has ? "" : "ghost")}
+                  style={{ ["--c" as string]: DAY_COLORS[i] } as React.CSSProperties}
+                  onClick={() => has && setSelectedDay(day)}
+                  disabled={!has}
+                  title={has ? `${routesByDay[day]!.length} tracé(s)` : "Aucun tracé proposé"}
+                >
+                  J{day}
+                </button>
+              );
+            })}
+          </div>
 
-        {tab === "places" && (
-          <div className="aside-body">
-            {places.length === 0 ? (
-              <div className="coord" style={{ padding: "24px 0", textAlign: "center" }}>
-                Aucun lieu pour l&apos;instant.
-                <br />
-                Clic sur la carte pour en ajouter.
+          {!selectedDay && (
+            <div
+              style={{ padding: "24px 0", textAlign: "center", color: "var(--ink-mute)" }}
+              className="coord"
+            >
+              Sélectionne un jour ↑
+            </div>
+          )}
+
+          {selectedDay && selectedRoutes.length === 0 && (
+            <div className="coord" style={{ padding: "24px 0", textAlign: "center" }}>
+              Aucun tracé proposé pour J{selectedDay}.<br />
+              Va sur <strong>/routes</strong> pour en proposer un.
+            </div>
+          )}
+
+          {selectedDay && selectedRoutes.length > 0 && (
+            <div className="route-list">
+              <div className="coord" style={{ marginTop: 8, marginBottom: 4 }}>
+                {selectedRoutes.length} tracé{selectedRoutes.length > 1 ? "s" : ""} pour J{selectedDay}
               </div>
-            ) : (
-              [...places]
-                .sort((a, b) => b.score - a.score)
-                .map((p) => (
-                  <div key={p.id} className="pin-row">
-                    <div className="pin-icon" style={{ borderColor: "var(--accent)", color: "var(--accent)" }}>
-                      ◆
-                    </div>
+              {selectedRoutes.map((r, idx) => {
+                const isWinner = idx === 0;
+                const rider = userById[r.userId] ?? "?";
+                return (
+                  <div key={r.id} className={"route-row " + (isWinner ? "winner" : "")}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="pin-name">{p.name}</div>
-                      <div className="pin-meta">
-                        <span className="coord">
-                          par {userById[p.userId] ?? "?"}
+                      <div className="route-name">
+                        {r.name}
+                        {isWinner && <span className="tag win" style={{ marginLeft: 8 }}>★ EN TÊTE</span>}
+                      </div>
+                      <div className="route-meta">
+                        <span className="mono">
+                          <b>{Math.round(r.distanceKm)}</b>km · D+{Math.round(r.elevationM)}m
                         </span>
-                        {p.description && (
-                          <span className="coord" title={p.description}>
-                            · {p.description.slice(0, 32)}
-                            {p.description.length > 32 ? "…" : ""}
-                          </span>
-                        )}
+                        <Avatar pseudo={rider} size="sm" />
+                        <span className="coord">{rider}</span>
                       </div>
                     </div>
                     <VoteButtons
-                      yes={p.upCount}
-                      no={p.downCount}
-                      myVote={p.myVote === "UP" ? "yes" : p.myVote === "DOWN" ? "no" : null}
-                      onVote={(v) => vote(p.id, v)}
+                      yes={r.upCount}
+                      no={r.downCount}
+                      myVote={r.myVote === "UP" ? "yes" : r.myVote === "DOWN" ? "no" : null}
+                      onVote={(v) => vote(r.id, v)}
                       compact
                     />
-                    {p.userId === meId && (
-                      <button
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => removePlace(p.id)}
-                        disabled={pending}
-                        title="Supprimer"
-                      >
-                        ✕
-                      </button>
-                    )}
                   </div>
-                ))
-            )}
-          </div>
-        )}
-
-        {tab === "gpx" && (
-          <div className="aside-body">
-            <div className="day-pills">
-              {Array.from({ length: tripDays }).map((_, i) => {
-                const day = i + 1;
-                const has = !!winnerGpxByDay[day];
-                return (
-                  <button
-                    key={day}
-                    className={"day-pill " + (selectedDay === day ? "on " : "") + (has ? "" : "ghost")}
-                    style={{ ["--c" as string]: DAY_COLORS[i] } as React.CSSProperties}
-                    onClick={() => has && setSelectedDay(day)}
-                    disabled={!has}
-                  >
-                    J{day}
-                  </button>
                 );
               })}
-            </div>
-            <div className="day-summary">
-              {selectedDay ? (
-                <>
-                  <h3 style={{ marginTop: 12, fontSize: 18 }}>
-                    Jour {selectedDay}
-                  </h3>
-                  <div className="dash-rule" />
-                  {winnerGpxByDay[selectedDay] ? (
-                    <div className="gpx-row">
-                      <div style={{ flex: 1 }}>
-                        <div className="gpx-name">{winnerGpxByDay[selectedDay].name}</div>
-                        <div className="coord">★ tracé en tête (vote)</div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="coord">Aucun tracé pour ce jour.</div>
-                  )}
-                </>
-              ) : (
-                <div
-                  style={{ padding: "24px 0", textAlign: "center", color: "var(--ink-mute)" }}
-                  className="coord"
-                >
-                  Sélectionne un jour ↑
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </aside>
-
-      {adding && (
-        <div className="modal-bg" onClick={() => !pending && setAdding(null)}>
-          <div className="modal card plated" onClick={(e) => e.stopPropagation()}>
-            <span className="corners" />
-            <div className="eyebrow" style={{ marginBottom: 6 }}>AJOUTER UN LIEU</div>
-            <h3 style={{ fontSize: 22, marginBottom: 18 }}>Pin sur la carte</h3>
-            <div className="coord" style={{ marginBottom: 14 }}>
-              {adding.lat.toFixed(4)}°N · {adding.lng.toFixed(4)}°E
-            </div>
-            <label className="field">
-              <span className="lbl">Nom</span>
-              <input
-                className="input"
-                value={addName}
-                onChange={(e) => setAddName(e.target.value)}
-                autoFocus
-                disabled={pending}
-                placeholder="Belvédère, station essence, …"
-              />
-            </label>
-            <label className="field" style={{ marginTop: 12 }}>
-              <span className="lbl">Description (optionnel)</span>
-              <input
-                className="input"
-                value={addDesc}
-                onChange={(e) => setAddDesc(e.target.value)}
-                disabled={pending}
-              />
-            </label>
-            {err && (
-              <div className="coord" style={{ color: "var(--no)", marginTop: 8 }}>
-                {err}
+              <div className="dash-rule" />
+              <div className="coord" style={{ textAlign: "center" }}>
+                Vote depuis la carte ou depuis <strong>/routes</strong>.
               </div>
-            )}
-            <div className="dash-rule" />
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <button className="btn btn-ghost" onClick={() => setAdding(null)} disabled={pending}>
-                Annuler
-              </button>
-              <button className="btn btn-primary" onClick={submitPlace} disabled={pending || !addName.trim()}>
-                {pending ? "…" : "Ajouter"}
-              </button>
             </div>
-          </div>
+          )}
         </div>
-      )}
+      </aside>
 
       <style>{`
         .map-screen {
@@ -358,22 +228,6 @@ export function MapView({
           overflow: hidden;
         }
         .map-canvas { position: relative; overflow: hidden; background: #0d0a06; }
-        .map-fab-hint {
-          position: absolute;
-          top: 20px; left: 20px;
-          padding: 8px 14px;
-          background: rgba(20,17,12,.85);
-          backdrop-filter: blur(6px);
-          color: var(--ink-dim);
-          font-family: var(--f-mono);
-          font-size: 11px;
-          letter-spacing: .08em;
-          text-transform: uppercase;
-          border: 1px solid var(--kraft);
-          border-radius: 2px;
-          z-index: 500;
-          pointer-events: none;
-        }
         .map-legend {
           position: absolute;
           bottom: 20px; left: 20px;
@@ -400,6 +254,14 @@ export function MapView({
         }
         .legend-chip.ghost { opacity: .3; cursor: default; }
         .legend-chip .lc-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+        .legend-chip .lc-count {
+          background: var(--kraft);
+          color: var(--ink);
+          padding: 0 5px;
+          border-radius: 2px;
+          font-size: 9px;
+          margin-left: 2px;
+        }
         .legend-chip:hover:not(.ghost) { border-color: var(--ink-mute); color: var(--ink); }
         .legend-chip.on {
           border-color: var(--c);
@@ -420,53 +282,7 @@ export function MapView({
           padding: 14px 18px;
           border-bottom: 1px solid var(--kraft);
         }
-        .aside-tabs { display: flex; border-bottom: 1px solid var(--kraft); }
-        .aside-tab {
-          flex: 1;
-          background: transparent;
-          border: none;
-          color: var(--ink-dim);
-          font-family: var(--f-mono);
-          font-size: 12px;
-          letter-spacing: .12em;
-          text-transform: uppercase;
-          padding: 14px 12px;
-          cursor: pointer;
-          transition: color .14s;
-          position: relative;
-          display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-        }
-        .aside-tab .count {
-          background: var(--kraft);
-          color: var(--ink);
-          padding: 1px 8px;
-          border-radius: 2px;
-          font-size: 10px;
-        }
-        .aside-tab:hover { color: var(--ink); }
-        .aside-tab.on { color: var(--accent); }
-        .aside-tab.on::after {
-          content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--accent);
-        }
         .aside-body { flex: 1; overflow-y: auto; padding: 14px 18px; }
-        .pin-row, .gpx-row {
-          display: flex; align-items: center; gap: 12px;
-          padding: 12px 0;
-          border-bottom: 1px dashed var(--ink-faint);
-        }
-        .pin-row:last-child, .gpx-row:last-child { border-bottom: none; }
-        .pin-icon {
-          width: 32px; height: 32px;
-          border: 1.5px solid var(--ink-mute);
-          background: var(--paper-2);
-          border-radius: 50%;
-          display: inline-flex; align-items: center; justify-content: center;
-          font-family: var(--f-mono); font-size: 12px;
-          flex-shrink: 0;
-        }
-        .pin-name { font-size: 14px; line-height: 1.3; }
-        .pin-meta { margin-top: 4px; font-size: 11px; color: var(--ink-mute); display: flex; gap: 6px; flex-wrap: wrap; }
-        .gpx-name { font-size: 14px; font-weight: 600; }
 
         .day-pills {
           display: flex; gap: 6px; flex-wrap: wrap;
@@ -486,6 +302,28 @@ export function MapView({
         .day-pill.ghost { opacity: .3; cursor: default; }
         .day-pill:hover:not(.ghost) { color: var(--ink); border-color: var(--ink-mute); }
         .day-pill.on { background: var(--c); color: #14110c; border-color: var(--c); }
+
+        .route-list { display: flex; flex-direction: column; gap: 4px; }
+        .route-row {
+          display: flex; align-items: center; gap: 10px;
+          padding: 12px 0;
+          border-bottom: 1px dashed var(--ink-faint);
+        }
+        .route-row.winner {
+          background: linear-gradient(180deg, transparent, rgba(240,168,48,.04));
+          margin: 0 -8px;
+          padding-left: 8px;
+          padding-right: 8px;
+          border-radius: 2px;
+        }
+        .route-name { font-size: 14px; font-weight: 600; display: flex; align-items: center; flex-wrap: wrap; }
+        .route-meta {
+          display: flex; gap: 8px; align-items: center;
+          margin-top: 6px;
+          font-size: 11px;
+          color: var(--ink-mute);
+        }
+        .route-meta b { color: var(--ink); font-weight: 700; }
 
         .sheet-toggle {
           position: absolute;
