@@ -24,6 +24,8 @@ model User {
   placeVotes           PlaceVote[]
   routes               Route[]
   routeVotes           RouteVote[]
+  lodgings             Lodging[]
+  lodgingVotes         LodgingVote[]
 }
 
 model DateProposal {
@@ -90,6 +92,9 @@ model Route {
   distanceKm    Float
   elevationM    Float
   durationSec   Int?
+  // Polyline reconstruite via OSRM (route-following). [{lng,lat},...] en JSON.
+  // Null si la reconstruction a échoué ou si le GPX est déjà un track dense.
+  roadGeoJson   String?
   createdAt     DateTime     @default(now())
 
   user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -115,4 +120,33 @@ model Expense {
   amountEur   Float
   perPerson   Boolean  @default(false)
   createdAt   DateTime @default(now())
+}
+
+model Lodging {
+  id             String         @id @default(cuid())
+  userId         String          // proposed by
+  url            String
+  title          String?         // OG title or user-provided
+  ogImage        String?
+  ogDescription  String?
+  priceEur       Float?
+  nightCount     Int?
+  addressText    String?
+  lat            Float?
+  lng            Float?
+  createdAt      DateTime       @default(now())
+
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  votes          LodgingVote[]
+}
+
+model LodgingVote {
+  userId     String
+  lodgingId  String
+  value      VoteValue
+
+  user       User      @relation(fields: [userId],    references: [id], onDelete: Cascade)
+  lodging    Lodging   @relation(fields: [lodgingId], references: [id], onDelete: Cascade)
+
+  @@id([userId, lodgingId])
 }

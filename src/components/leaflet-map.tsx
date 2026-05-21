@@ -23,7 +23,12 @@ export type MapPlace = {
   score: number;
 };
 
-export type DayGpx = { id: string; name: string; gpxContent: string };
+export type DayGpx = {
+  id: string;
+  name: string;
+  gpxContent: string;
+  roadGeoJson?: string | null;
+};
 
 function pinIcon(color: string) {
   return L.divIcon({
@@ -77,17 +82,29 @@ export function LeafletMap({
   onMapClick: (lat: number, lng: number) => void;
   onPlaceClick: (id: string) => void;
 }) {
-  // Pre-parse GPX once per content.
+  // Pre-parse GPX once per content. Prefer reconstructed road-following polyline
+  // (`roadGeoJson` from OSRM) when available; otherwise fall back to raw waypoints.
   const tracks = useMemo(() => {
     const out: { day: number; name: string; coords: [number, number][] }[] = [];
     for (const [day, g] of Object.entries(winnerGpxByDay)) {
-      const [parsed, err] = parseGPX(g.gpxContent);
-      if (err || !parsed) continue;
-      const track = parsed.tracks[0] ?? parsed.routes[0];
-      if (!track) continue;
-      const coords = track.points
-        .filter((p) => Number.isFinite(p.latitude) && Number.isFinite(p.longitude))
-        .map((p) => [p.latitude, p.longitude] as [number, number]);
+      let coords: [number, number][] | null = null;
+      if (g.roadGeoJson) {
+        try {
+          const parsed = JSON.parse(g.roadGeoJson) as [number, number][];
+          if (Array.isArray(parsed) && parsed.length > 0) coords = parsed;
+        } catch {
+          // ignore, fall through to GPX parse
+        }
+      }
+      if (!coords) {
+        const [parsed, err] = parseGPX(g.gpxContent);
+        if (err || !parsed) continue;
+        const track = parsed.tracks[0] ?? parsed.routes[0];
+        if (!track) continue;
+        coords = track.points
+          .filter((p) => Number.isFinite(p.latitude) && Number.isFinite(p.longitude))
+          .map((p) => [p.latitude, p.longitude] as [number, number]);
+      }
       if (coords.length > 0) out.push({ day: +day, name: g.name, coords });
     }
     return out;

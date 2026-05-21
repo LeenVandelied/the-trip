@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireCurrentUser } from "@/lib/current-user";
 import { MAX_GPX_BYTES, TRIP_DAYS } from "@/lib/constants";
+import { reconstructRoadCoords } from "@/lib/osrm";
 import type { VoteValue } from "@prisma/client";
 
 export type ProposeRouteInput = {
@@ -32,6 +33,17 @@ export async function proposeRouteAction(
       return { ok: false, error: "Distance invalide" };
     }
 
+    // Reconstruct road-following polyline via OSRM (best-effort).
+    let roadGeoJson: string | null = null;
+    try {
+      const recon = await reconstructRoadCoords(input.gpxContent);
+      if (recon.ok) {
+        roadGeoJson = JSON.stringify(recon.coords);
+      }
+    } catch {
+      // Swallow — we'll save the route without the matched polyline.
+    }
+
     const r = await prisma.route.create({
       data: {
         userId: user.id,
@@ -41,6 +53,7 @@ export async function proposeRouteAction(
         distanceKm: input.distanceKm,
         elevationM: input.elevationM,
         durationSec: input.durationSec ?? null,
+        roadGeoJson,
       },
     });
     revalidatePath("/routes");

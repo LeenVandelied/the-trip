@@ -22,7 +22,10 @@ export default async function MapPage() {
   const userById = Object.fromEntries(users.map((u) => [u.id, u.name]));
 
   // For each day, keep the winning route's gpxContent (lightweight on wire vs all routes' gpx).
-  const winnerGpxByDay: Record<number, { id: string; name: string; gpxContent: string }> = {};
+  const winnerGpxByDay: Record<
+    number,
+    { id: string; name: string; gpxContent: string; roadGeoJson: string | null }
+  > = {};
   const byDay = new Map<number, typeof routes>();
   for (const r of routes) {
     const arr = byDay.get(r.dayNumber) ?? [];
@@ -41,6 +44,7 @@ export default async function MapPage() {
         id: sorted[0].id,
         name: sorted[0].name,
         gpxContent: sorted[0].gpxContent,
+        roadGeoJson: sorted[0].roadGeoJson,
       };
     }
   }

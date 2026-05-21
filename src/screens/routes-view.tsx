@@ -28,6 +28,7 @@ type RouteLite = {
   upCount: number;
   downCount: number;
   myVote: "UP" | "DOWN" | null;
+  roadMatched: boolean;
 };
 
 async function parseGpxFile(file: File): Promise<ProposeRouteInput | { error: string }> {
@@ -284,6 +285,21 @@ export function RoutesView({
                                   ★ EN TÊTE
                                 </span>
                               )}
+                              <span
+                                className="tag"
+                                style={{
+                                  marginLeft: 8,
+                                  color: g.roadMatched ? "var(--yes)" : "var(--ink-mute)",
+                                  borderColor: g.roadMatched ? "var(--yes)" : "var(--ink-faint)",
+                                }}
+                                title={
+                                  g.roadMatched
+                                    ? "Tracé reconstruit sur les routes via OSRM"
+                                    : "Affichage en lignes droites entre waypoints — upload un track dense pour mieux faire"
+                                }
+                              >
+                                {g.roadMatched ? "✓ ROUTES" : "△ WAYPOINTS"}
+                              </span>
                             </div>
                           </div>
                           <div className="gx-meta">

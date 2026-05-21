@@ -27,6 +27,7 @@ export default async function RoutesPage() {
     durationSec: r.durationSec,
     userId: r.userId,
     createdAtISO: r.createdAt.toISOString(),
+    roadMatched: r.roadGeoJson != null,
     score: r.votes.reduce((acc, v) => acc + (v.value === "UP" ? 1 : -1), 0),
     upCount: r.votes.filter((v) => v.value === "UP").length,
     downCount: r.votes.filter((v) => v.value === "DOWN").length,

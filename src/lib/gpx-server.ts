@@ -1,7 +1,7 @@
 // GPX parsing on the server (uses xmldom-qsa via parseGPXWithCustomParser).
 // Used to derive route start/end coords + bounds for weather queries etc.
 
-import { parseGPX } from "@we-gold/gpxjs";
+import { parseGpxNode } from "@/lib/parse-gpx-node";
 
 export type GpxSummary = {
   startLat: number;
@@ -16,7 +16,7 @@ export function summarizeGpx(gpxContent: string): GpxSummary | null {
   // gpxjs's `parseGPX` works on Node (uses xmldom-qsa internally per its docs);
   // if it doesn't, callers can fall back to summarizing on the client.
   try {
-    const [parsed, err] = parseGPX(gpxContent);
+    const [parsed, err] = parseGpxNode(gpxContent);
     if (err || !parsed) return null;
     const track = parsed.tracks[0] ?? parsed.routes[0];
     if (!track || track.points.length === 0) return null;
