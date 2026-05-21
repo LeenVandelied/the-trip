@@ -5,20 +5,29 @@ Mini-site privé pour organiser un roadtrip moto de 7 jours entre potes.
 ## Stack cible
 - Next.js 15 (App Router) + TypeScript strict
 - Tailwind v4 + shadcn/ui
-- Neon Postgres (free) + Prisma OU Drizzle
-- react-leaflet + leaflet-gpx OU @we-gold/gpxjs
+- Neon Postgres (free) + **Prisma**
+- **react-leaflet + leaflet-gpx** pour l'affichage carte
+- **@we-gold/gpxjs** côté client pour parser (distance / D+ / durée à l'upload)
 - Server Actions (pas d'API routes)
+- `/roadbook` printable via CSS print uniquement (pas de lib PDF)
 - Déploiement Vercel Hobby (free)
 
+## Variables d'environnement
+- `DATABASE_URL` — Neon
+- `TRIP_NAME` — affiché dans le hero / nav
+- `TRIP_SLUG` — identifie le deploy (single-trip)
+
 ## Décisions produit
-- **Single trip** (1 deploy = 1 roadtrip, slug en env)
-- **Pas d'auth** : pseudo libre, pas de PIN, pas d'anti-doublon
-- **Vote** : 👍 / 👎 uniquement
+- **Single trip** (1 deploy = 1 roadtrip, `TRIP_SLUG` en env)
+- **Pas d'auth** : pseudo libre stocké en **localStorage**, pas de PIN, pas d'anti-doublon (on assume l'honnêteté du groupe). La pastille pseudo permet juste de changer son pseudo localement.
+- **Vote** : 👍 / 👎 uniquement, score = `UP − DOWN`. Vote **indicatif**, pas de mécanisme de lock / freeze.
 - **GPX rattaché à un jour** (J1 → J7), pas de vote global
+- **GPX stocké en colonne `text` Postgres** (pas de blob storage)
 - **Public** : sportives / roadsters / trails — trip **route** (asphalte/cols, pas off-road)
-- **Carburant via GPX** : somme Haversine des points × conso × prix essence
-- **Météo** : Open-Meteo (free, no key) sur les dates favorites
+- **Carburant via GPX** : `Σ haversine(points) × conso/100 × prix` — conso et prix saisis par chaque user dans ses paramètres perso (pas de prix hardcodé, pas d'API tierce)
+- **Météo** : Open-Meteo (free, no key) sur les dates favorites, lat/lng = **moyenne des lieux votés 👍**
 - **Export iCal** sur /roadbook quand dates retenues
+- **Données mobiles-first** (vote depuis le tel à l'apéro)
 
 ## Écrans
 1. `/` — Landing + saisie pseudo
@@ -47,8 +56,16 @@ Expense(id, label, amountEur, perPerson: bool)
 - Pas de multi-trip
 - Pas de pagination
 
+## Points laissés ouverts (Claude Code pourra demander)
+- Formule exacte "plage gagnante" (majorité YES ? YES+MAYBE pondéré ? quorum min ?)
+- Règle de départage en cas d'égalité de score sur les GPX d'un jour
+- Limite taille upload GPX
+- Choix final des tuiles carte (CartoDB Dark Matter vs Stadia Outdoors — laisser Claude trancher au regard du visuel Claude Design)
+- Champs exacts du VEVENT iCal (summary, location, description par jour)
+- Valeurs par défaut conso/prix si user n'a rien saisi
+
 ## Workflow
-1. Brainstorm (fait — voir `brief.md`)
+1. Brainstorm (fait — voir ce README)
 2. UI via Claude Design (prompt dans `claude-design-prompt.md`)
 3. Code en local (Claude Code reprend ce repo)
 4. Deploy Vercel + Neon
