@@ -106,53 +106,234 @@ export default async function HomePage() {
         </div>
 
         <div className="landing-right">
-          <div className="topo-frame" data-label="PL.01 — ROUTE SINUEUSE">
+          <div className="topo-frame" data-label="PL.01 — RELEVÉ TOPOGRAPHIQUE">
             <svg viewBox="0 0 400 520" width="100%" style={{ display: "block" }}>
               <defs>
                 <pattern id="lp-grid" width="20" height="20" patternUnits="userSpaceOnUse">
                   <path
                     d="M 20 0 L 0 0 0 20"
                     fill="none"
-                    stroke="rgba(240,168,48,.07)"
+                    stroke="rgba(240,168,48,.08)"
                     strokeWidth=".5"
+                  />
+                </pattern>
+                <pattern id="lp-grid-major" width="100" height="100" patternUnits="userSpaceOnUse">
+                  <path
+                    d="M 100 0 L 0 0 0 100"
+                    fill="none"
+                    stroke="rgba(240,168,48,.18)"
+                    strokeWidth=".8"
                   />
                 </pattern>
               </defs>
               <rect width="400" height="520" fill="url(#lp-grid)" />
-              <g fill="none" stroke="rgba(240,168,48,.13)" strokeWidth="1">
-                <ellipse cx="80" cy="120" rx="80" ry="50" />
-                <ellipse cx="80" cy="120" rx="120" ry="75" />
-                <ellipse cx="80" cy="120" rx="160" ry="100" />
-                <ellipse cx="320" cy="400" rx="60" ry="40" />
-                <ellipse cx="320" cy="400" rx="100" ry="65" />
+              <rect width="400" height="520" fill="url(#lp-grid-major)" />
+
+              {/* Contour lines — sommet principal (centre-haut) */}
+              <g fill="none" stroke="rgba(240,168,48,.22)" strokeWidth="1.1">
+                {[40, 70, 105, 145, 190, 240].map((r, i) => (
+                  <ellipse
+                    key={`peak-a-${i}`}
+                    cx="170"
+                    cy="160"
+                    rx={r}
+                    ry={r * 0.7}
+                  />
+                ))}
               </g>
+              {/* Cote du sommet */}
+              <text
+                x="170"
+                y="164"
+                textAnchor="middle"
+                fontFamily="var(--f-mono)"
+                fontSize="10"
+                fill="var(--accent)"
+                letterSpacing="0.1em"
+              >
+                ▲ 2802
+              </text>
+
+              {/* Contour lines — sommet secondaire (bas-droite) */}
+              <g fill="none" stroke="rgba(240,168,48,.16)" strokeWidth="1">
+                {[30, 60, 95, 135].map((r, i) => (
+                  <ellipse
+                    key={`peak-b-${i}`}
+                    cx="310"
+                    cy="410"
+                    rx={r * 0.9}
+                    ry={r * 0.65}
+                    transform="rotate(-22 310 410)"
+                  />
+                ))}
+              </g>
+              <text
+                x="310"
+                y="414"
+                textAnchor="middle"
+                fontFamily="var(--f-mono)"
+                fontSize="9"
+                fill="rgba(240,168,48,.45)"
+                letterSpacing="0.1em"
+              >
+                ▲ 1968
+              </text>
+
+              {/* Itinéraire principal — large halo + trait net */}
               <path
-                d="M 30 480 Q 100 460 130 410 T 200 320 Q 240 270 220 220 T 250 110 Q 270 60 340 40"
+                d="M 40 480 C 80 440 110 420 130 380 S 170 300 200 270 S 270 220 280 170 S 270 100 320 60"
                 fill="none"
                 stroke="var(--accent)"
-                strokeWidth="3"
+                strokeOpacity=".22"
+                strokeWidth="10"
                 strokeLinecap="round"
               />
-              <g transform="translate(200,290) rotate(-30)">
-                <circle cx="0" cy="-30" r="14" fill="none" stroke="var(--ink)" strokeWidth="2" />
-                <circle cx="0" cy="-30" r="5" fill="var(--ink)" />
-                <circle cx="0" cy="30" r="14" fill="none" stroke="var(--ink)" strokeWidth="2" />
-                <circle cx="0" cy="30" r="5" fill="var(--ink)" />
-                <line x1="0" y1="-16" x2="0" y2="16" stroke="var(--ink)" strokeWidth="2" />
-                <rect
-                  x="-9"
-                  y="-8"
-                  width="18"
-                  height="16"
-                  fill="var(--paper-3)"
-                  stroke="var(--ink)"
-                  strokeWidth="1.5"
-                />
-                <line x1="0" y1="-30" x2="0" y2="-44" stroke="var(--ink)" strokeWidth="2" />
-                <line x1="-10" y1="-44" x2="10" y2="-44" stroke="var(--ink)" strokeWidth="2" />
-                <circle cx="0" cy="-50" r="3" fill="var(--accent)" />
-                <ellipse cx="0" cy="8" rx="6" ry="3" fill="var(--ink)" />
+              <path
+                d="M 40 480 C 80 440 110 420 130 380 S 170 300 200 270 S 270 220 280 170 S 270 100 320 60"
+                fill="none"
+                stroke="var(--accent)"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeDasharray="0"
+              />
+
+              {/* Étapes — petits pins le long du tracé */}
+              {[
+                { x: 130, y: 380 },
+                { x: 200, y: 270 },
+                { x: 280, y: 170 },
+              ].map((p, i) => (
+                <g key={`pin-${i}`}>
+                  <circle cx={p.x} cy={p.y} r="5" fill="var(--paper)" stroke="var(--accent)" strokeWidth="1.8" />
+                  <circle cx={p.x} cy={p.y} r="1.6" fill="var(--accent)" />
+                </g>
+              ))}
+
+              {/* Départ */}
+              <g transform="translate(40,480)">
+                <circle r="7" fill="var(--paper)" stroke="var(--accent)" strokeWidth="2" />
+                <circle r="2.5" fill="var(--accent)" />
+                <text
+                  x="14"
+                  y="4"
+                  fontFamily="var(--f-mono)"
+                  fontSize="10"
+                  fill="var(--ink-dim)"
+                  letterSpacing="0.14em"
+                >
+                  DÉPART
+                </text>
               </g>
+
+              {/* Arrivée */}
+              <g transform="translate(320,60)">
+                <rect x="-7" y="-7" width="14" height="14" fill="var(--accent)" stroke="var(--accent)" />
+                <text
+                  x="-14"
+                  y="4"
+                  textAnchor="end"
+                  fontFamily="var(--f-mono)"
+                  fontSize="10"
+                  fill="var(--ink-dim)"
+                  letterSpacing="0.14em"
+                >
+                  ARRIVÉE
+                </text>
+              </g>
+
+              {/* Rose des vents (bas-gauche) */}
+              <g transform="translate(60,430)">
+                <circle r="22" fill="none" stroke="var(--ink-mute)" strokeWidth="0.8" />
+                <circle r="3" fill="var(--ink-mute)" />
+                <path d="M 0 -22 L 4 -4 L 0 0 L -4 -4 Z" fill="var(--accent)" />
+                <path d="M 0 22 L 4 4 L 0 0 L -4 4 Z" fill="var(--ink-dim)" opacity=".5" />
+                <path d="M 22 0 L 4 4 L 0 0 L 4 -4 Z" fill="var(--ink-dim)" opacity=".35" />
+                <path d="M -22 0 L -4 4 L 0 0 L -4 -4 Z" fill="var(--ink-dim)" opacity=".35" />
+                <text
+                  x="0"
+                  y="-28"
+                  textAnchor="middle"
+                  fontFamily="var(--f-mono)"
+                  fontSize="9"
+                  fontWeight="700"
+                  fill="var(--accent)"
+                >
+                  N
+                </text>
+              </g>
+
+              {/* Échelle bas-droite */}
+              <g transform="translate(310,490)">
+                <line x1="0" y1="0" x2="60" y2="0" stroke="var(--ink-mute)" strokeWidth="1" />
+                <line x1="0" y1="-3" x2="0" y2="3" stroke="var(--ink-mute)" strokeWidth="1" />
+                <line x1="20" y1="-2" x2="20" y2="2" stroke="var(--ink-mute)" strokeWidth="1" />
+                <line x1="40" y1="-2" x2="40" y2="2" stroke="var(--ink-mute)" strokeWidth="1" />
+                <line x1="60" y1="-3" x2="60" y2="3" stroke="var(--ink-mute)" strokeWidth="1" />
+                <text
+                  x="30"
+                  y="-7"
+                  textAnchor="middle"
+                  fontFamily="var(--f-mono)"
+                  fontSize="9"
+                  fill="var(--ink-mute)"
+                  letterSpacing="0.1em"
+                >
+                  0 — 50 km
+                </text>
+              </g>
+
+              {/* Tampon ALPES (encre rouge) */}
+              <g transform="translate(280,290) rotate(-8)" opacity=".82">
+                <rect
+                  x="-44"
+                  y="-15"
+                  width="88"
+                  height="30"
+                  fill="none"
+                  stroke="var(--stamp)"
+                  strokeWidth="1.6"
+                />
+                <text
+                  x="0"
+                  y="5"
+                  textAnchor="middle"
+                  fontFamily="var(--f-stamp)"
+                  fontSize="15"
+                  fontWeight="700"
+                  fill="var(--stamp)"
+                  letterSpacing="0.2em"
+                >
+                  ALPES
+                </text>
+              </g>
+
+              {/* Coords corners */}
+              <text x="6" y="14" fontFamily="var(--f-mono)" fontSize="9" fill="var(--ink-mute)">
+                45.90°N · 06.12°E
+              </text>
+              <text
+                x="394"
+                y="514"
+                textAnchor="end"
+                fontFamily="var(--f-mono)"
+                fontSize="9"
+                fill="var(--ink-mute)"
+              >
+                43.70°N · 07.27°E
+              </text>
+              <text x="6" y="514" fontFamily="var(--f-mono)" fontSize="9" fill="var(--ink-faint)">
+                ÉCH. 1:2 000 000
+              </text>
+              <text
+                x="394"
+                y="14"
+                textAnchor="end"
+                fontFamily="var(--f-mono)"
+                fontSize="9"
+                fill="var(--ink-faint)"
+              >
+                ÉD. 2026.07
+              </text>
             </svg>
           </div>
           <div
@@ -163,7 +344,7 @@ export default async function HomePage() {
               marginTop: 10,
             }}
           >
-            <span className="coord">Planche d&apos;illustration · à recadrer</span>
+            <span className="coord">Carte synoptique · indicative</span>
             <Stamp angle={-4}>Bon pour départ</Stamp>
           </div>
         </div>
