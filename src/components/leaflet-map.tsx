@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import {
   MapContainer,
   TileLayer,
   Polyline,
+  Marker,
+  Popup,
   useMap,
 } from "react-leaflet";
 import L from "leaflet";
@@ -18,6 +20,42 @@ export type MapRoute = {
   gpxContent: string;
   roadGeoJson: string | null;
 };
+
+export type LodgingPin = {
+  id: string;
+  lat: number;
+  lng: number;
+  name: string;
+  priceEur: number | null;
+  hostname?: string;
+  url?: string;
+};
+
+function lodgingIcon() {
+  return L.divIcon({
+    className: "tt-lodging",
+    html: `<span style="
+      display:block; width:26px; height:26px;
+      border-radius:50% 50% 50% 0;
+      background:#b8472f;
+      border:2px solid #14110c;
+      box-shadow:0 0 0 2px rgba(184,71,47,.35), 0 6px 12px rgba(0,0,0,.6);
+      transform:rotate(-45deg);
+      position:relative;
+    "><span style="
+      position:absolute; inset:0;
+      display:flex; align-items:center; justify-content:center;
+      transform:rotate(45deg);
+      color:#1a1308;
+      font-family: var(--f-stamp);
+      font-size:13px; font-weight:700;
+    ">⌂</span></span>`,
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
+    popupAnchor: [0, -22],
+  });
+}
+const lodgingDivIcon = lodgingIcon();
 
 function FitTo({ points }: { points: [number, number][] }) {
   const map = useMap();
@@ -53,10 +91,12 @@ function coordsFor(r: MapRoute): [number, number][] | null {
 export function LeafletMap({
   routesByDay,
   highlightDay,
+  lodgingPins = [],
 }: {
   /** Per day, routes sorted by score desc (first = winner). */
   routesByDay: Record<number, MapRoute[]>;
   highlightDay: number | null;
+  lodgingPins?: LodgingPin[];
 }) {
   // Pre-parse all routes once, flatten with per-route metadata for rendering.
   const items = useMemo(() => {
@@ -81,11 +121,14 @@ export function LeafletMap({
     // Fit to the winners only — keeps the view tight even when many alternates extend outside.
     const pts: [number, number][] = [];
     for (const it of items) if (it.isWinner) pts.push(...it.coords);
-    if (pts.length > 0) return pts;
-    // Fallback: any route at all.
-    for (const it of items) pts.push(...it.coords);
+    if (pts.length === 0) {
+      // Fallback: any route at all.
+      for (const it of items) pts.push(...it.coords);
+    }
+    // Always include lodging pins in the fit bounds.
+    for (const lp of lodgingPins) pts.push([lp.lat, lp.lng]);
     return pts;
-  }, [items]);
+  }, [items, lodgingPins]);
 
   const defaultCenter: [number, number] = allPoints[0] ?? [46.5, 4];
 
@@ -128,6 +171,23 @@ export function LeafletMap({
           />
         );
       })}
+
+      {lodgingPins.map((lp) => (
+        <Marker key={lp.id} position={[lp.lat, lp.lng]} icon={lodgingDivIcon}>
+          <Popup>
+            <strong>{lp.name}</strong>
+            <div style={{ fontSize: 11, opacity: 0.75, marginTop: 4 }}>
+              {lp.priceEur != null ? `${Math.round(lp.priceEur)} €` : "— prix non renseigné —"}
+              {lp.hostname ? ` · ${lp.hostname}` : ""}
+            </div>
+            {lp.url && (
+              <div style={{ marginTop: 6 }}>
+                <a href={lp.url} target="_blank" rel="noreferrer">Voir l&apos;annonce ↗</a>
+              </div>
+            )}
+          </Popup>
+        </Marker>
+      ))}
     </MapContainer>
   );
 }

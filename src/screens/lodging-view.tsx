@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { Avatar } from "@/components/avatar";
 import { VoteButtons, type Vote } from "@/components/vote-buttons";
 import {
@@ -10,6 +11,13 @@ import {
   voteLodgingAction,
   deleteLodgingAction,
 } from "@/app/actions/lodgings";
+
+const LeafletMap = dynamic(
+  () => import("@/components/leaflet-map").then((m) => m.LeafletMap),
+  { ssr: false, loading: () => null },
+);
+
+type RouteMin = { id: string; name: string; gpxContent: string; roadGeoJson: string | null };
 
 function isAirbnbUrl(s: string): boolean {
   try {
@@ -113,13 +121,19 @@ export function LodgingView({
   meId,
   userById,
   headcount,
+  tripDays,
   lodgings,
+  winnerRoutesByDay,
 }: {
   meId: string | null;
   userById: Record<string, string>;
   headcount: number;
+  tripDays: number;
   lodgings: LodgingLite[];
+  winnerRoutesByDay: Record<number, RouteMin[]>;
 }) {
+  // Lodgings with a geocoded position are renderable on the map.
+  void tripDays;
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   // Form is shared between "add" and "edit". When editing, `editId` holds the lodging id;
@@ -308,6 +322,48 @@ export function LodgingView({
         </div>
       )}
 
+      {(() => {
+        const located = sorted.filter((l) => l.lat != null && l.lng != null);
+        const hasRoutes = Object.values(winnerRoutesByDay).some((arr) => arr.length > 0);
+        if (located.length === 0 && !hasRoutes) return null;
+        return (
+          <div style={{ marginTop: 24 }}>
+            <div
+              className="eyebrow"
+              style={{ marginBottom: 10, display: "flex", alignItems: "center", gap: 14 }}
+            >
+              <span>EMPLACEMENTS</span>
+              <span style={{ flex: 1, height: 1, background: "var(--ink-faint)" }} />
+              <span>
+                {located.length}/{sorted.length} GÉOLOCALISÉS
+                {hasRoutes && " · TRACÉS EN TÊTE AFFICHÉS"}
+              </span>
+            </div>
+            <div className="lodge-map-wrap">
+              <LeafletMap
+                routesByDay={winnerRoutesByDay}
+                highlightDay={null}
+                lodgingPins={located.map((l) => ({
+                  id: l.id,
+                  lat: l.lat!,
+                  lng: l.lng!,
+                  name: l.title ?? hostnameOf(l.url),
+                  priceEur: l.priceEur,
+                  hostname: hostnameOf(l.url),
+                  url: l.url,
+                }))}
+              />
+            </div>
+            {located.length < sorted.length && (
+              <div className="coord" style={{ marginTop: 8, color: "var(--ink-mute)" }}>
+                💡 Pour qu&apos;un logement apparaisse sur la carte, renseigne son adresse
+                (bouton Éditer) — on géocode automatiquement.
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {showForm && (
         <div className="modal-bg" onClick={() => !pending && setShowForm(false)}>
           <div className="modal card plated" onClick={(e) => e.stopPropagation()}>
@@ -478,6 +534,18 @@ export function LodgingView({
         }
         .split-table thead th.is-now {
           color: var(--accent);
+        }
+
+        .lodge-map-wrap {
+          width: 100%;
+          height: 480px;
+          border: 1px solid var(--kraft);
+          border-radius: var(--radius);
+          overflow: hidden;
+          background: #0d0a06;
+        }
+        @media (max-width: 720px) {
+          .lodge-map-wrap { height: 360px; }
         }
 
         .split-hint {
