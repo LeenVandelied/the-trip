@@ -26,6 +26,7 @@ model User {
   routeVotes           RouteVote[]
   lodgings             Lodging[]
   lodgingVotes         LodgingVote[]
+  messages             Message[]
 }
 
 model DateProposal {
@@ -149,4 +150,15 @@ model LodgingVote {
   lodging    Lodging   @relation(fields: [lodgingId], references: [id], onDelete: Cascade)
 
   @@id([userId, lodgingId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  userId    String
+  content   String   @db.VarChar(2000)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
 }

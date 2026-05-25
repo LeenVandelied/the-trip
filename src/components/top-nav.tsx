@@ -12,6 +12,7 @@ const ROUTES = [
   { id: "routes", label: "Itinéraires", path: "/routes" },
   { id: "lodging", label: "Logement", path: "/lodging" },
   { id: "budget", label: "Budget", path: "/budget" },
+  { id: "chat", label: "Chat", path: "/chat" },
   { id: "roadbook", label: "Roadbook", path: "/roadbook" },
 ] as const;
 
