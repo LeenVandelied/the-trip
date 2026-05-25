@@ -53,13 +53,71 @@ function mapsUrl(l: LodgingLite): string {
   return "";
 }
 
+const SPLIT_RANGE = [8, 9, 10, 11, 12, 13, 14] as const;
+
+function SplitTable({
+  priceEur,
+  nightCount,
+  headcount,
+}: {
+  priceEur: number;
+  nightCount: number;
+  headcount: number;
+}) {
+  return (
+    <div className="split-wrap">
+      <div className="split-title coord">RÉPARTITION SELON LA TAILLE DU GROUPE</div>
+      <div className="split-scroll">
+        <table className="split-table">
+          <thead>
+            <tr>
+              <th>
+                <span className="coord">PERS.</span>
+              </th>
+              {SPLIT_RANGE.map((n) => (
+                <th key={n} className={n === headcount ? "is-now" : ""}>
+                  {n}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <span className="coord">€&nbsp;/&nbsp;pers</span>
+              </td>
+              {SPLIT_RANGE.map((n) => (
+                <td key={n} className={n === headcount ? "is-now" : ""}>
+                  {Math.round(priceEur / n)}
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <td>
+                <span className="coord">€&nbsp;/&nbsp;pers&nbsp;/&nbsp;nuit</span>
+              </td>
+              {SPLIT_RANGE.map((n) => (
+                <td key={n} className={n === headcount ? "is-now" : ""}>
+                  {Math.round(priceEur / n / nightCount)}
+                </td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export function LodgingView({
   meId,
   userById,
+  headcount,
   lodgings,
 }: {
   meId: string | null;
   userById: Record<string, string>;
+  headcount: number;
   lodgings: LodgingLite[];
 }) {
   const router = useRouter();
@@ -197,6 +255,20 @@ export function LodgingView({
                       </span>
                     )}
                   </div>
+                  {l.priceEur != null && l.nightCount != null && l.nightCount > 0 ? (
+                    <SplitTable
+                      priceEur={l.priceEur}
+                      nightCount={l.nightCount}
+                      headcount={headcount}
+                    />
+                  ) : (
+                    (l.priceEur == null || l.nightCount == null) && l.userId === meId && (
+                      <div className="coord split-hint">
+                        💡 Renseigne le prix total + le nombre de nuits (bouton Éditer)
+                        pour voir la répartition par personne.
+                      </div>
+                    )
+                  )}
                   <div className="lodge-actions">
                     <a className="btn btn-secondary btn-sm" href={l.url} target="_blank" rel="noreferrer">
                       Voir l&apos;annonce ↗
@@ -361,6 +433,61 @@ export function LodgingView({
           margin-top: 6px;
         }
         .dual { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        .split-wrap {
+          margin-top: 2px;
+          border: 1px dashed var(--ink-faint);
+          border-radius: 2px;
+          padding: 8px 10px 10px;
+          background: rgba(255,255,255,.015);
+        }
+        .split-title {
+          font-size: 9px;
+          letter-spacing: .14em;
+          margin-bottom: 6px;
+        }
+        .split-scroll { overflow-x: auto; margin: 0 -2px; }
+        .split-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-family: var(--f-mono);
+          font-size: 11px;
+        }
+        .split-table th, .split-table td {
+          padding: 4px 6px;
+          text-align: center;
+          color: var(--ink-dim);
+          white-space: nowrap;
+          border-bottom: 1px solid var(--ink-faint);
+        }
+        .split-table thead th { color: var(--ink-mute); font-weight: 600; font-size: 10px; letter-spacing: .08em; }
+        .split-table tbody tr:last-child td { border-bottom: none; }
+        .split-table td:first-child, .split-table th:first-child {
+          text-align: left;
+          color: var(--ink-mute);
+        }
+        .split-table td:not(:first-child) {
+          color: var(--ink);
+          font-weight: 600;
+          font-variant-numeric: tabular-nums;
+        }
+        .split-table .is-now {
+          background: rgba(240,168,48,.10);
+          color: var(--accent);
+          border-bottom-color: var(--accent-line);
+        }
+        .split-table thead th.is-now {
+          color: var(--accent);
+        }
+
+        .split-hint {
+          font-size: 11px;
+          padding: 8px 10px;
+          border: 1px dashed var(--accent-line);
+          border-radius: 2px;
+          color: var(--ink-dim);
+          margin-top: 2px;
+        }
       `}</style>
     </div>
   );

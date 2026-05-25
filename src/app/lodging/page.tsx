@@ -15,11 +15,13 @@ export default async function LodgingPage() {
   ]);
 
   const userById = Object.fromEntries(users.map((u) => [u.id, u.name]));
+  const headcount = users.length;
 
   return (
     <LodgingView
       meId={me?.id ?? null}
       userById={userById}
+      headcount={headcount}
       lodgings={lodgings.map((l) => ({
         id: l.id,
         url: l.url,
