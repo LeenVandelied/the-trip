@@ -32,6 +32,12 @@ function fmtFRRange(start: Date, end: Date): string {
   return `${s} → ${e}`;
 }
 
+function spanDaysNights(start: Date, end: Date): { days: number; nights: number } {
+  // Round to absorb any DST hour shift; both dates are stored at UTC midnight upstream.
+  const nights = Math.max(0, Math.round((end.getTime() - start.getTime()) / 86_400_000));
+  return { days: nights + 1, nights };
+}
+
 export function DatesView({
   meId,
   mePseudo,
@@ -286,6 +292,16 @@ export function DatesView({
                     <div style={{ minWidth: 0 }}>
                       <div className="coord">PLAGE&nbsp;{r.id.slice(0, 4).toUpperCase()}</div>
                       <h3 className="dr-title">{fmtFRRange(r.start, r.end)}</h3>
+                      {(() => {
+                        const { days, nights } = spanDaysNights(r.start, r.end);
+                        return (
+                          <div className="dr-span">
+                            <span className="mono"><b>{days}</b> jour{days > 1 ? "s" : ""}</span>
+                            <span className="dr-span-sep">·</span>
+                            <span className="mono"><b>{nights}</b> nuit{nights > 1 ? "s" : ""}</span>
+                          </div>
+                        );
+                      })()}
                     </div>
                     {isWin && (
                       <Stamp angle={6} color="var(--accent)">
@@ -490,6 +506,19 @@ export function DatesView({
         }
         .dr-title { font-size: 28px; margin-top: 4px; line-height: 1.15; }
         @media (max-width: 540px) { .dr-title { font-size: 22px; } }
+        .dr-span {
+          margin-top: 8px;
+          display: inline-flex; align-items: center; gap: 6px;
+          font-family: var(--f-mono);
+          font-size: 12px;
+          color: var(--ink-dim);
+          letter-spacing: .04em;
+          padding: 4px 10px;
+          border: 1px solid var(--ink-faint);
+          border-radius: 2px;
+        }
+        .dr-span b { color: var(--ink); font-weight: 700; }
+        .dr-span-sep { color: var(--ink-faint); }
         .dates-row.win {
           border-color: var(--accent-line);
           background: linear-gradient(180deg, var(--paper-2), rgba(240,168,48,.04));
