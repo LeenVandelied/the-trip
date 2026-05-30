@@ -19,7 +19,10 @@ export type Proposal = {
   availabilities: { userId: string; status: VoteKind }[];
 };
 
-const RANGE_COLORS = ["#f0a830", "#5aa9e6", "#7fb069", "#c879c7", "#e8c547", "#d96b3a"];
+// Distinct hues, all on the cool/saturated side so none collides with the brand
+// accent (#f0a830 ambre) or the "EN TÊTE" stamp. Ordered around the wheel:
+// vert → cyan → bleu → violet → magenta → corail.
+const RANGE_COLORS = ["#7fb069", "#22d3ee", "#5aa9e6", "#a78bfa", "#c879c7", "#fb7185"];
 const MONTH_NAMES = [
   "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
   "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
