@@ -43,13 +43,13 @@ function spanDaysNights(start: Date, end: Date): { days: number; nights: number 
 
 export function DatesView({
   meId,
-  mePseudo,
   userById,
   totalUsers,
   proposals,
 }: {
   meId: string | null;
-  mePseudo: string | null;
+  /** kept in the API shape but unused inside (server-side data already resolved). */
+  mePseudo?: string | null;
   userById: Record<string, string>;
   totalUsers: number;
   proposals: Proposal[];
@@ -335,9 +335,28 @@ export function DatesView({
                       <div className="bar-seg no" style={{ width: np + "%" }} />
                     </div>
                     <div className="bar-leg">
-                      <span><i className="dot yes" />{r.yes} dispo</span>
-                      <span><i className="dot maybe" />{r.maybe} peut-être</span>
-                      <span><i className="dot no" />{r.no} non</span>
+                      {(
+                        [
+                          { status: "YES" as const, dotCls: "yes", label: "dispo", count: r.yes },
+                          { status: "MAYBE" as const, dotCls: "maybe", label: "peut-être", count: r.maybe },
+                          { status: "NO" as const, dotCls: "no", label: "non", count: r.no },
+                        ]
+                      ).map(({ status, dotCls, label, count }) => {
+                        const pseudos = r.availabilities
+                          .filter((a) => a.status === status)
+                          .map((a) => userById[a.userId] ?? "?");
+                        return (
+                          <span key={status} className="leg-row" title={pseudos.length ? pseudos.join(", ") : "Personne"}>
+                            <i className={"dot " + dotCls} />
+                            <span className="leg-num">{count}</span> {label}
+                            {pseudos.length > 0 && (
+                              <span className="leg-avs">
+                                <AvatarStack pseudos={pseudos} size="sm" max={5} />
+                              </span>
+                            )}
+                          </span>
+                        );
+                      })}
                     </div>
                   </div>
                   <div className="dr-foot">
@@ -356,30 +375,14 @@ export function DatesView({
                         </button>
                       ))}
                     </div>
-                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                      <span className="coord">VOTANTS&nbsp;:</span>
-                      <AvatarStack
-                        pseudos={r.availabilities
-                          .filter((a) => a.status !== "NO")
-                          .map((a) => userById[a.userId] ?? "?")
-                          .concat(
-                            mePseudo && r.availabilities.every((a) => a.userId !== meId)
-                              ? []
-                              : [],
-                          )}
-                        size="sm"
-                        max={6}
-                      />
-                      <button
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => removeProposal(r.id)}
-                        title="Supprimer cette plage"
-                        disabled={pending}
-                        style={{ marginLeft: 4 }}
-                      >
-                        ✕
-                      </button>
-                    </div>
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => removeProposal(r.id)}
+                      title="Supprimer cette plage"
+                      disabled={pending}
+                    >
+                      ✕
+                    </button>
                   </div>
                 </div>
               );
@@ -557,10 +560,17 @@ export function DatesView({
         .bar-seg.maybe { background: var(--maybe); }
         .bar-seg.no    { background: var(--no); }
         .bar-leg {
-          display: flex; gap: 18px; margin-top: 8px;
+          display: flex; flex-wrap: wrap; gap: 12px 22px; margin-top: 10px;
           font-family: var(--f-mono); font-size: 11px; color: var(--ink-dim);
           letter-spacing: .04em;
         }
+        .leg-row {
+          display: inline-flex; align-items: center; gap: 6px;
+          cursor: default;
+        }
+        .leg-row .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .leg-num { color: var(--ink); font-weight: 700; }
+        .leg-avs { margin-left: 6px; display: inline-flex; }
         .bar-leg .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; vertical-align: middle; }
         .dot.yes { background: var(--yes); } .dot.maybe { background: var(--maybe); } .dot.no { background: var(--no); }
         .dr-foot {
