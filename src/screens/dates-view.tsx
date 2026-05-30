@@ -136,25 +136,28 @@ export function DatesView({
     }
   };
 
-  // Build month grid from min start to max end
+  // All date math below is done in UTC: proposal start/end come from the DB as
+  // UTC midnights, so we render the calendar in UTC too. Mixing local-midnight
+  // cells with UTC-midnight ranges would silently drop the first day of each
+  // range when the user's offset is positive (TZ bug — fixed).
   const months: { y: number; m: number }[] = [];
   if (parsed.length > 0) {
     let cur = new Date(Math.min(...parsed.map((r) => r.start.getTime())));
-    cur.setDate(1);
+    cur = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth(), 1));
     const last = new Date(Math.max(...parsed.map((r) => r.end.getTime())));
     while (cur <= last) {
-      months.push({ y: cur.getFullYear(), m: cur.getMonth() });
-      cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+      months.push({ y: cur.getUTCFullYear(), m: cur.getUTCMonth() });
+      cur = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth() + 1, 1));
     }
   }
 
   const buildCells = (y: number, m: number): (Date | null)[] => {
-    const firstDay = new Date(y, m, 1);
-    const lastDay = new Date(y, m + 1, 0);
-    const offset = (firstDay.getDay() + 6) % 7;
+    const firstDay = new Date(Date.UTC(y, m, 1));
+    const lastDay = new Date(Date.UTC(y, m + 1, 0));
+    const offset = (firstDay.getUTCDay() + 6) % 7; // Mon=0
     const cells: (Date | null)[] = [];
     for (let i = 0; i < offset; i++) cells.push(null);
-    for (let d = 1; d <= lastDay.getDate(); d++) cells.push(new Date(y, m, d));
+    for (let d = 1; d <= lastDay.getUTCDate(); d++) cells.push(new Date(Date.UTC(y, m, d)));
     while (cells.length % 7) cells.push(null);
     return cells;
   };
@@ -235,7 +238,8 @@ export function DatesView({
                       {cells.map((day, idx) => {
                         if (!day) return <div className="cal-cell empty" key={idx} />;
                         const inRanges = parsed.filter((r) => day >= r.start && day <= r.end);
-                        const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+                        const utcDow = day.getUTCDay();
+                        const isWeekend = utcDow === 0 || utcDow === 6;
                         return (
                           <button
                             key={idx}
@@ -246,7 +250,7 @@ export function DatesView({
                             }
                             onClick={() => inRanges.length && scrollToRange(inRanges[0].id)}
                           >
-                            <span className="cal-d">{day.getDate()}</span>
+                            <span className="cal-d">{day.getUTCDate()}</span>
                             {inRanges.length > 0 && (
                               <span className="cal-stripes">
                                 {inRanges.map((r) => (
