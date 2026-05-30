@@ -288,9 +288,25 @@ export function DatesView({
                   key={r.id}
                 >
                   <span className="corners" />
+                  <span className="dr-tab" style={{ background: r.color }} aria-hidden="true" />
                   <div className="dr-head">
                     <div style={{ minWidth: 0 }}>
-                      <div className="coord">PLAGE&nbsp;{r.id.slice(0, 4).toUpperCase()}</div>
+                      <div
+                        className="coord"
+                        style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+                      >
+                        <span
+                          aria-hidden="true"
+                          style={{
+                            width: 10,
+                            height: 10,
+                            borderRadius: 2,
+                            background: r.color,
+                            display: "inline-block",
+                          }}
+                        />
+                        PLAGE&nbsp;{r.id.slice(0, 4).toUpperCase()}
+                      </div>
                       <h3 className="dr-title">{fmtFRRange(r.start, r.end)}</h3>
                       {(() => {
                         const { days, nights } = spanDaysNights(r.start, r.end);
@@ -500,6 +516,12 @@ export function DatesView({
         .dates-row.flash { animation: flashRow 1.1s ease; }
 
         .dates-list { display: grid; gap: var(--gap); }
+        .dates-row { overflow: hidden; }
+        .dates-row .dr-tab {
+          position: absolute;
+          top: 0; left: 0; bottom: 0;
+          width: 4px;
+        }
         .dates-row .dr-head {
           display: flex; justify-content: space-between; align-items: flex-start;
           gap: 16px; margin-bottom: 22px;
