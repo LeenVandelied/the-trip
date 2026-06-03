@@ -364,9 +364,11 @@ export default async function HomePage() {
             <span className="coord">Carte synoptique · indicative</span>
             <Stamp angle={-4}>Bon pour départ</Stamp>
           </div>
-
-          <ChatMini meId={me?.id ?? null} mePseudo={me?.name ?? null} initial={chatInitial} />
         </div>
+      </div>
+
+      <div className="landing-chat">
+        <ChatMini meId={me?.id ?? null} mePseudo={me?.name ?? null} initial={chatInitial} />
       </div>
 
       <footer className="lf">
@@ -414,6 +416,9 @@ export default async function HomePage() {
           letter-spacing: .14em; color: var(--ink-mute); margin-top: 4px;
         }
         .qs-sep { width: 1px; align-self: stretch; background: var(--ink-faint); }
+        .landing-chat { margin-top: 40px; }
+        .landing-chat .chat-mini { margin-top: 0; }
+        .landing-chat .cm-list { max-height: 360px; }
         .lf { margin-top: 40px; padding-top: 24px; border-top: 1px dashed var(--ink-faint); }
         .lf-row {
           display: flex; align-items: center; gap: 16px;
