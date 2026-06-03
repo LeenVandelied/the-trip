@@ -34,6 +34,8 @@ export default async function MapPage() {
       score: number;
       upCount: number;
       downCount: number;
+      upVoters: string[];
+      downVoters: string[];
       myVote: "UP" | "DOWN" | null;
     }[]
   > = {};
@@ -56,6 +58,8 @@ export default async function MapPage() {
       score: r.votes.reduce((acc, v) => acc + (v.value === "UP" ? 1 : -1), 0),
       upCount: r.votes.filter((v) => v.value === "UP").length,
       downCount: r.votes.filter((v) => v.value === "DOWN").length,
+      upVoters: r.votes.filter((v) => v.value === "UP").map((v) => userById[v.userId] ?? "?"),
+      downVoters: r.votes.filter((v) => v.value === "DOWN").map((v) => userById[v.userId] ?? "?"),
       myVote: me ? r.votes.find((v) => v.userId === me.id)?.value ?? null : null,
     });
   }

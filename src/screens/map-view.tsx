@@ -47,6 +47,8 @@ type RouteLite = {
   score: number;
   upCount: number;
   downCount: number;
+  upVoters: string[];
+  downVoters: string[];
   myVote: "UP" | "DOWN" | null;
 };
 
@@ -202,6 +204,8 @@ export function MapView({
                     <VoteButtons
                       yes={r.upCount}
                       no={r.downCount}
+                      upPseudos={r.upVoters}
+                      downPseudos={r.downVoters}
                       myVote={r.myVote === "UP" ? "yes" : r.myVote === "DOWN" ? "no" : null}
                       onVote={(v) => vote(r.id, v)}
                       compact

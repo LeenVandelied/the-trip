@@ -66,6 +66,8 @@ export default async function LodgingPage() {
         score: l.votes.reduce((acc, v) => acc + (v.value === "UP" ? 1 : -1), 0),
         upCount: l.votes.filter((v) => v.value === "UP").length,
         downCount: l.votes.filter((v) => v.value === "DOWN").length,
+        upVoters: l.votes.filter((v) => v.value === "UP").map((v) => userById[v.userId] ?? "?"),
+        downVoters: l.votes.filter((v) => v.value === "DOWN").map((v) => userById[v.userId] ?? "?"),
         myVote: me ? l.votes.find((v) => v.userId === me.id)?.value ?? null : null,
       }))}
       winnerRoutesByDay={winnerByDay}

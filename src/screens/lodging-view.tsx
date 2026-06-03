@@ -44,6 +44,8 @@ export type LodgingLite = {
   score: number;
   upCount: number;
   downCount: number;
+  upVoters: string[];
+  downVoters: string[];
   myVote: "UP" | "DOWN" | null;
 };
 
@@ -296,6 +298,8 @@ export function LodgingView({
                     <VoteButtons
                       yes={l.upCount}
                       no={l.downCount}
+                      upPseudos={l.upVoters}
+                      downPseudos={l.downVoters}
                       myVote={l.myVote === "UP" ? "yes" : l.myVote === "DOWN" ? "no" : null}
                       onVote={(v) => vote(l.id, v)}
                     />

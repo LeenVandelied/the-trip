@@ -27,6 +27,8 @@ type RouteLite = {
   score: number;
   upCount: number;
   downCount: number;
+  upVoters: string[];
+  downVoters: string[];
   myVote: "UP" | "DOWN" | null;
   roadMatched: boolean;
 };
@@ -330,6 +332,8 @@ export function RoutesView({
                           <VoteButtons
                             yes={g.upCount}
                             no={g.downCount}
+                            upPseudos={g.upVoters}
+                            downPseudos={g.downVoters}
                             myVote={
                               g.myVote === "UP" ? "yes" : g.myVote === "DOWN" ? "no" : null
                             }
