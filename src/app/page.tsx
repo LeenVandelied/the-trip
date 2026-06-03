@@ -71,7 +71,7 @@ export default async function HomePage() {
                 ÉQUIPAGE
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <AvatarStack pseudos={users.map((u) => u.name)} max={10} />
+                <AvatarStack pseudos={users.map((u) => u.name)} />
                 <span style={{ flex: 1 }} />
                 <span className="coord">
                   {users.length} EMBARQUÉ{users.length > 1 ? "S" : ""}
