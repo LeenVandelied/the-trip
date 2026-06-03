@@ -4,16 +4,33 @@ import { getCurrentUser } from "@/lib/current-user";
 import { LandingForm } from "@/components/landing-form";
 import { AvatarStack } from "@/components/avatar";
 import { Stamp } from "@/components/stamp";
+import { ChatMini } from "@/components/chat-mini";
 import { TRIP_DAYS } from "@/lib/constants";
+import type { ChatMessage } from "@/lib/messages-shared";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [me, users, routes] = await Promise.all([
+  const [me, users, routes, recentMessages] = await Promise.all([
     getCurrentUser(),
     prisma.user.findMany({ orderBy: { createdAt: "asc" } }),
     prisma.route.findMany({ include: { votes: true } }),
+    prisma.message.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 6,
+      include: { user: { select: { name: true } } },
+    }),
   ]);
+
+  const chatInitial: ChatMessage[] = recentMessages
+    .map((m) => ({
+      id: m.id,
+      userId: m.userId,
+      authorName: m.user.name,
+      content: m.content,
+      createdAtISO: m.createdAt.toISOString(),
+    }))
+    .reverse();
 
   const byDay = new Map<number, typeof routes>();
   for (const r of routes) {
@@ -347,6 +364,8 @@ export default async function HomePage() {
             <span className="coord">Carte synoptique · indicative</span>
             <Stamp angle={-4}>Bon pour départ</Stamp>
           </div>
+
+          <ChatMini meId={me?.id ?? null} mePseudo={me?.name ?? null} initial={chatInitial} />
         </div>
       </div>
 
