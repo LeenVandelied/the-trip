@@ -197,10 +197,16 @@ export function LodgingView({
     });
   };
 
-  const remove = (id: string) => {
-    if (!confirm("Supprimer ce logement ?")) return;
+  const remove = (l: LodgingLite) => {
+    const author = userById[l.userId] ?? "?";
+    const isMine = l.userId === meId;
+    const title = l.title ?? hostnameOf(l.url);
+    const msg = isMine
+      ? `Supprimer ton logement « ${title} » ?`
+      : `Supprimer « ${title} » (proposé par ${author}) ?`;
+    if (!confirm(msg)) return;
     startTransition(async () => {
-      const res = await deleteLodgingAction(id);
+      const res = await deleteLodgingAction(l.id);
       if (!res.ok) { alert(res.error); return; }
       router.refresh();
     });
@@ -307,13 +313,24 @@ export function LodgingView({
                   <div className="lodge-foot">
                     <Avatar pseudo={rider} size="sm" />
                     <span className="coord">par {rider}</span>
-                    {l.userId === meId && (
+                    {meId && (
                       <>
                         <span style={{ flex: 1 }} />
-                        <button className="btn btn-ghost btn-sm" onClick={() => openEdit(l)} disabled={pending}>
-                          Éditer
-                        </button>
-                        <button className="btn btn-ghost btn-sm" onClick={() => remove(l.id)} disabled={pending}>
+                        {l.userId === meId && (
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => openEdit(l)}
+                            disabled={pending}
+                          >
+                            Éditer
+                          </button>
+                        )}
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => remove(l)}
+                          disabled={pending}
+                          title="Supprimer ce logement"
+                        >
                           ✕
                         </button>
                       </>

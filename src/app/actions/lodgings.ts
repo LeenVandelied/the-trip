@@ -154,12 +154,13 @@ export async function deleteLodgingAction(
   id: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
-    const user = await requireCurrentUser();
+    // Anyone embarked can delete. README: "on assume l'honnêteté du groupe".
+    await requireCurrentUser();
     const l = await prisma.lodging.findUnique({ where: { id } });
     if (!l) return { ok: false, error: "Logement introuvable" };
-    if (l.userId !== user.id) return { ok: false, error: "Tu peux supprimer uniquement les logements que tu as proposés" };
     await prisma.lodging.delete({ where: { id } });
     revalidatePath("/lodging");
+    revalidatePath("/budget");
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Erreur" };
