@@ -74,6 +74,35 @@ export function winningPricedLodging(lodgings: LodgingWithVotes[]): LodgingWithV
   })[0]!;
 }
 
+export type EffectiveHeadcount = {
+  count: number;
+  /** "winning-yes" when derived from YES voters of the winning proposal,
+   *  "fallback-users" when no proposal won yet → falls back to total embarked users. */
+  source: "winning-yes" | "fallback-users";
+  /** Date range of the winning proposal in ISO (start/end), when known. */
+  winnerStartISO?: string;
+  winnerEndISO?: string;
+};
+
+/** Headcount used for per-person cost estimates.
+ *  Prefer YES voters of the leading date proposal. If none has any YES vote yet,
+ *  fall back to the total number of embarked users. */
+export function effectiveHeadcount(
+  proposals: DateProposalWithAvail[],
+  fallbackTotalUsers: number,
+): EffectiveHeadcount {
+  const w = dateProposalWinner(proposals);
+  if (!w) return { count: Math.max(1, fallbackTotalUsers), source: "fallback-users" };
+  const yes = w.availabilities.filter((a) => a.status === ("YES" as AvailabilityStatus)).length;
+  if (yes <= 0) return { count: Math.max(1, fallbackTotalUsers), source: "fallback-users" };
+  return {
+    count: yes,
+    source: "winning-yes",
+    winnerStartISO: w.startDate.toISOString(),
+    winnerEndISO: w.endDate.toISOString(),
+  };
+}
+
 export function countByStatus(p: DateProposalWithAvail): { yes: number; maybe: number; no: number } {
   let yes = 0, maybe = 0, no = 0;
   for (const a of p.availabilities) {

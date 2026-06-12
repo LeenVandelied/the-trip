@@ -1,18 +1,19 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/current-user";
-import { routeWinner, winningPricedLodging } from "@/lib/winners";
+import { routeWinner, winningPricedLodging, effectiveHeadcount } from "@/lib/winners";
 import { BudgetView } from "@/screens/budget-view";
 import { DEFAULT_CONSO_L100, DEFAULT_FUEL_PRICE, TRIP_DAYS } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
 export default async function BudgetPage() {
-  const [me, routes, expenses, users, lodgings] = await Promise.all([
+  const [me, routes, expenses, users, lodgings, dateProposals] = await Promise.all([
     getCurrentUser(),
     prisma.route.findMany({ include: { votes: true } }),
     prisma.expense.findMany({ orderBy: { createdAt: "asc" } }),
     prisma.user.findMany(),
     prisma.lodging.findMany({ include: { votes: true } }),
+    prisma.dateProposal.findMany({ include: { availabilities: true } }),
   ]);
 
   // Sum the winning distance per day.
@@ -29,6 +30,7 @@ export default async function BudgetPage() {
   }
 
   const lodgingWinner = winningPricedLodging(lodgings);
+  const head = effectiveHeadcount(dateProposals, users.length);
 
   return (
     <BudgetView
@@ -45,7 +47,11 @@ export default async function BudgetPage() {
       defaults={{ conso: DEFAULT_CONSO_L100, fuelPrice: DEFAULT_FUEL_PRICE }}
       totalKm={totalKm}
       tripDays={TRIP_DAYS}
-      headcount={Math.max(users.length, 1)}
+      headcount={head.count}
+      headcountSource={head.source}
+      winnerStartISO={head.winnerStartISO ?? null}
+      winnerEndISO={head.winnerEndISO ?? null}
+      totalUsers={users.length}
       expenses={expenses.map((e) => ({
         id: e.id,
         label: e.label,

@@ -123,6 +123,10 @@ export function LodgingView({
   meId,
   userById,
   headcount,
+  headcountSource,
+  winnerStartISO,
+  winnerEndISO,
+  totalUsers,
   tripDays,
   lodgings,
   winnerRoutesByDay,
@@ -130,10 +134,30 @@ export function LodgingView({
   meId: string | null;
   userById: Record<string, string>;
   headcount: number;
+  headcountSource: "winning-yes" | "fallback-users";
+  winnerStartISO: string | null;
+  winnerEndISO: string | null;
+  totalUsers: number;
   tripDays: number;
   lodgings: LodgingLite[];
   winnerRoutesByDay: Record<number, RouteMin[]>;
 }) {
+  const headcountFromVotes = headcountSource === "winning-yes";
+  const winnerLabel =
+    winnerStartISO && winnerEndISO
+      ? (() => {
+          const s = new Date(winnerStartISO);
+          const e = new Date(winnerEndISO);
+          const months = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+          const sameMonth = s.getUTCMonth() === e.getUTCMonth() && s.getUTCFullYear() === e.getUTCFullYear();
+          return sameMonth
+            ? `${s.getUTCDate()} → ${e.getUTCDate()} ${months[e.getUTCMonth()]}`
+            : `${s.getUTCDate()} ${months[s.getUTCMonth()]} → ${e.getUTCDate()} ${months[e.getUTCMonth()]}`;
+        })()
+      : null;
+  const headcountTitle = headcountFromVotes
+    ? `${headcount} motard(s) qui ont voté OUI sur la plage en tête${winnerLabel ? ` (${winnerLabel})` : ""}.\nTotal inscrits : ${totalUsers}.`
+    : `${headcount} motard(s) — fallback sur tous les inscrits, aucune date validée.`;
   // Lodgings with a geocoded position are renderable on the map.
   void tripDays;
   const router = useRouter();
@@ -221,6 +245,19 @@ export function LodgingView({
         </div>
         <div className="meta" style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
           <span>{sorted.length} PROPOSITION{sorted.length > 1 ? "S" : ""}</span>
+          <span title={headcountTitle}>
+            BASE&nbsp;:&nbsp;
+            <strong style={{ color: "var(--ink)" }}>{headcount}</strong>
+            &nbsp;MOTO{headcount > 1 ? "S" : ""}
+          </span>
+          <span
+            className="coord"
+            style={{ color: headcountFromVotes ? "var(--accent)" : "var(--ink-mute)" }}
+          >
+            {headcountFromVotes
+              ? `↳ votants OUI · ${winnerLabel ?? ""}`
+              : "↳ tous les inscrits — aucune date validée"}
+          </span>
           <button className="btn btn-primary btn-sm" onClick={() => meId ? openAdd() : router.push("/")}>
             ＋ Proposer
           </button>

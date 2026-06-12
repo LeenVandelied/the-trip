@@ -9,6 +9,20 @@ import {
   deleteExpenseAction,
 } from "@/app/actions/budget";
 
+const MONTHS_SHORT = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+
+function fmtShortRange(start: Date, end: Date): string {
+  // Dates are stored at UTC midnight upstream; display in UTC to avoid TZ drift.
+  const sd = start.getUTCDate();
+  const sm = start.getUTCMonth();
+  const ed = end.getUTCDate();
+  const em = end.getUTCMonth();
+  const sameMonth = sm === em && start.getUTCFullYear() === end.getUTCFullYear();
+  return sameMonth
+    ? `${sd} → ${ed} ${MONTHS_SHORT[em]}`
+    : `${sd} ${MONTHS_SHORT[sm]} → ${ed} ${MONTHS_SHORT[em]}`;
+}
+
 type Expense = { id: string; label: string; amountEur: number; perPerson: boolean };
 
 type LodgingWinner = {
@@ -24,6 +38,10 @@ export function BudgetView({
   totalKm,
   tripDays,
   headcount,
+  headcountSource,
+  winnerStartISO,
+  winnerEndISO,
+  totalUsers,
   expenses,
   lodgingWinner,
 }: {
@@ -32,9 +50,18 @@ export function BudgetView({
   totalKm: number;
   tripDays: number;
   headcount: number;
+  headcountSource: "winning-yes" | "fallback-users";
+  winnerStartISO: string | null;
+  winnerEndISO: string | null;
+  totalUsers: number;
   expenses: Expense[];
   lodgingWinner: LodgingWinner | null;
 }) {
+  const headcountFromVotes = headcountSource === "winning-yes";
+  const winnerLabel =
+    winnerStartISO && winnerEndISO
+      ? fmtShortRange(new Date(winnerStartISO), new Date(winnerEndISO))
+      : null;
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [moto, setMoto] = useState(me?.motoModel ?? "");
@@ -124,7 +151,32 @@ export function BudgetView({
             {Math.round(totalKm).toLocaleString("fr-FR")}&nbsp;km
           </span>
           <br />
-          {tripDays} JOURS · {headcount} MOTO{headcount > 1 ? "S" : ""}
+          {tripDays} JOURS ·{" "}
+          <span
+            title={
+              headcountFromVotes
+                ? `Votants OUI sur la plage en tête${winnerLabel ? ` (${winnerLabel})` : ""}.\nTotal inscrits : ${totalUsers}.`
+                : `Aucune plage retenue — fallback sur tous les inscrits (${totalUsers}).`
+            }
+          >
+            {headcount} MOTO{headcount > 1 ? "S" : ""}
+          </span>
+          {headcountFromVotes && winnerLabel && (
+            <>
+              <br />
+              <span className="coord" style={{ color: "var(--accent)" }}>
+                ↳ votants OUI · {winnerLabel}
+              </span>
+            </>
+          )}
+          {!headcountFromVotes && (
+            <>
+              <br />
+              <span className="coord" style={{ color: "var(--ink-mute)" }}>
+                ↳ tous les inscrits — aucune date validée
+              </span>
+            </>
+          )}
         </div>
       </div>
 
@@ -326,6 +378,13 @@ export function BudgetView({
             " Logement = non comptabilisé (pas de logement avec prix renseigné sur /lodging)."
           )}
           {" "}Partagé = somme des dépenses non-perso / nb motards.
+          {" "}
+          <em>
+            « nb motards » =
+            {headcountFromVotes
+              ? ` les ${headcount} votants OUI de la plage en tête${winnerLabel ? ` (${winnerLabel})` : ""}.`
+              : ` tous les inscrits (${headcount}), faute de plage validée.`}
+          </em>
         </p>
       </div>
 

@@ -1,13 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/current-user";
 import { LodgingView } from "@/screens/lodging-view";
-import { routeWinner } from "@/lib/winners";
+import { routeWinner, effectiveHeadcount } from "@/lib/winners";
 import { TRIP_DAYS } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
 export default async function LodgingPage() {
-  const [me, lodgings, users, routes] = await Promise.all([
+  const [me, lodgings, users, routes, dateProposals] = await Promise.all([
     getCurrentUser(),
     prisma.lodging.findMany({
       orderBy: { createdAt: "desc" },
@@ -15,10 +15,11 @@ export default async function LodgingPage() {
     }),
     prisma.user.findMany(),
     prisma.route.findMany({ include: { votes: true } }),
+    prisma.dateProposal.findMany({ include: { availabilities: true } }),
   ]);
 
   const userById = Object.fromEntries(users.map((u) => [u.id, u.name]));
-  const headcount = users.length;
+  const head = effectiveHeadcount(dateProposals, users.length);
 
   // Build winners-only routesByDay (lighter payload than /map).
   const winnerByDay: Record<number, { id: string; name: string; gpxContent: string; roadGeoJson: string | null }[]> = {};
@@ -48,7 +49,11 @@ export default async function LodgingPage() {
     <LodgingView
       meId={me?.id ?? null}
       userById={userById}
-      headcount={headcount}
+      headcount={head.count}
+      headcountSource={head.source}
+      winnerStartISO={head.winnerStartISO ?? null}
+      winnerEndISO={head.winnerEndISO ?? null}
+      totalUsers={users.length}
       tripDays={TRIP_DAYS}
       lodgings={lodgings.map((l) => ({
         id: l.id,
