@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Avatar } from "@/components/avatar";
 import { VoteButtons, type Vote } from "@/components/vote-buttons";
 import { Stamp } from "@/components/stamp";
-import { RouteSparkline } from "@/components/route-sparkline";
+import { RoutePreviewMap } from "@/components/route-preview-map";
 import {
   proposeRouteAction,
   voteRouteAction,
@@ -241,7 +241,7 @@ export function RoutesView({
                   </div>
                   {winning && (
                     <div style={{ marginTop: 12 }}>
-                      <RouteSparkline points={winning.tracePoints} day={dayN} height={180} />
+                      <RoutePreviewMap points={winning.tracePoints} day={dayN} height={200} />
                       <div className="coord" style={{ marginTop: 6 }}>
                         Tracé en tête : <strong style={{ color: "var(--ink)" }}>{winning.name}</strong>
                       </div>
@@ -277,7 +277,7 @@ export function RoutesView({
                     return (
                       <li key={g.id} className={"gpx-item " + (isWinner ? "winner" : "")}>
                         <div className="gx-mini">
-                          <RouteSparkline points={g.tracePoints} day={dayN} height={70} />
+                          <RoutePreviewMap points={g.tracePoints} day={dayN} height={80} />
                         </div>
                         <div className="gx-info">
                           <div className="gx-head">
