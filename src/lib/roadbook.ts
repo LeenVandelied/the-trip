@@ -14,6 +14,8 @@ export type RoadbookDay = {
     distanceKm: number;
     elevationM: number;
     durationSec: number | null;
+    gpxContent: string;
+    roadGeoJson: string | null;
     startLat?: number;
     startLng?: number;
     endLat?: number;
@@ -125,6 +127,8 @@ export async function computeRoadbook(): Promise<RoadbookSummary> {
             distanceKm: win.distanceKm,
             elevationM: win.elevationM,
             durationSec: win.durationSec,
+            gpxContent: win.roadGeoJson ? "" : win.gpxContent,
+            roadGeoJson: win.roadGeoJson,
             startLat: summary?.startLat,
             startLng: summary?.startLng,
             endLat: summary?.endLat,

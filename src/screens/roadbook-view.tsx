@@ -1,12 +1,36 @@
 "use client";
 
-import { useTransition } from "react";
+import { useMemo, useTransition } from "react";
+import dynamic from "next/dynamic";
 import { AvatarStack } from "@/components/avatar";
 import { Stamp } from "@/components/stamp";
-import { MiniRoute } from "@/components/map-placeholder";
 import { DAY_COLORS } from "@/lib/constants";
 import { buildRoadbookIcsAction } from "@/app/actions/ical";
 import type { RoadbookSummary } from "@/lib/roadbook";
+
+const LeafletMap = dynamic(
+  () => import("@/components/leaflet-map").then((m) => m.LeafletMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "var(--ink-mute)",
+          fontFamily: "var(--f-mono)",
+          fontSize: 11,
+          letterSpacing: ".14em",
+        }}
+      >
+        CHARGEMENT…
+      </div>
+    ),
+  },
+);
 
 export function RoadbookView({
   mePseudo,
@@ -123,8 +147,31 @@ export function RoadbookView({
                 <div className="rb-map">
                   {win ? (
                     <>
-                      <MiniRoute day={day.n} height={140} />
-                      <div className="coord rb-gpx-name">{win.name}</div>
+                      <div className="rb-map-box no-print">
+                        <LeafletMap
+                          routesByDay={{
+                            [day.n]: [
+                              {
+                                id: win.id,
+                                name: win.name,
+                                gpxContent: win.gpxContent,
+                                roadGeoJson: win.roadGeoJson,
+                              },
+                            ],
+                          }}
+                          highlightDay={day.n}
+                        />
+                      </div>
+                      <div className="rb-gpx-row">
+                        <span className="coord rb-gpx-name">{win.name}</span>
+                        <a
+                          className="btn btn-secondary btn-sm no-print"
+                          href={`/api/routes/${win.id}/gpx`}
+                          title="Télécharger le .gpx"
+                        >
+                          ⬇ GPX
+                        </a>
+                      </div>
                     </>
                   ) : (
                     <div className="coord">— aucun tracé retenu —</div>
@@ -228,7 +275,19 @@ export function RoadbookView({
           .book-page { padding: 28px 22px 22px 48px; }
         }
         .rb-map { position: relative; }
-        .rb-gpx-name { margin-top: 8px; font-size: 11px; color: var(--ink-dim); }
+        .rb-map-box {
+          width: 100%;
+          height: 220px;
+          border: 1px solid var(--ink-faint);
+          border-radius: 2px;
+          overflow: hidden;
+          background: #0f0c08;
+        }
+        .rb-gpx-row {
+          display: flex; align-items: center; justify-content: space-between;
+          gap: 12px; margin-top: 8px; flex-wrap: wrap;
+        }
+        .rb-gpx-name { font-size: 11px; color: var(--ink-dim); }
         .rb-stats { display: flex; gap: 28px; margin-bottom: 18px; }
         .rb-stats b { font-size: 24px; color: var(--ink); font-weight: 700; }
         .rb-section { margin-bottom: 18px; }

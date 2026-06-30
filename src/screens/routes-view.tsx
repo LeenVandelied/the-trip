@@ -316,6 +316,14 @@ export function RoutesView({
                             <span className="coord">par&nbsp;</span>
                             <Avatar pseudo={rider} size="sm" />
                             <span className="coord" style={{ marginLeft: -2 }}>{rider}</span>
+                            <a
+                              className="btn btn-ghost btn-sm"
+                              href={`/api/routes/${g.id}/gpx`}
+                              style={{ marginLeft: 6 }}
+                              title="Télécharger le .gpx"
+                            >
+                              ⬇ GPX
+                            </a>
                             {g.userId === meId && (
                               <button
                                 className="btn btn-ghost btn-sm"
