@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/current-user";
 import { RoutesView } from "@/screens/routes-view";
 import { TRIP_DAYS } from "@/lib/constants";
+import { extractTracePoints } from "@/lib/gpx-server";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,7 @@ export default async function RoutesPage() {
     upVoters: r.votes.filter((v) => v.value === "UP").map((v) => userById[v.userId] ?? "?"),
     downVoters: r.votes.filter((v) => v.value === "DOWN").map((v) => userById[v.userId] ?? "?"),
     myVote: me ? r.votes.find((v) => v.userId === me.id)?.value ?? null : null,
+    tracePoints: extractTracePoints(r.gpxContent, r.roadGeoJson, 48),
   }));
 
   return (
