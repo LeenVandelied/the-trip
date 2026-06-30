@@ -241,7 +241,7 @@ export function RoutesView({
                   </div>
                   {winning && (
                     <div style={{ marginTop: 12 }}>
-                      <RouteSparkline points={winning.tracePoints} day={dayN} height={80} />
+                      <RouteSparkline points={winning.tracePoints} day={dayN} height={180} />
                       <div className="coord" style={{ marginTop: 6 }}>
                         Tracé en tête : <strong style={{ color: "var(--ink)" }}>{winning.name}</strong>
                       </div>

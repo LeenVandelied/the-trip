@@ -19,32 +19,48 @@ export function RouteSparkline({
   let startCy = 0;
   let endCx = 0;
   let endCy = 0;
-  const W = 200;
-  const H = height;
-  const padX = 6;
-  const padY = 6;
+  let viewW = 200;
+  let viewH = height;
+  const pad = 8;
 
   if (hasPoints) {
-    let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
-    for (const [lat, lng] of points) {
-      if (lat < minLat) minLat = lat;
-      if (lat > maxLat) maxLat = lat;
-      if (lng < minLng) minLng = lng;
-      if (lng > maxLng) maxLng = lng;
-    }
-    const spanLat = Math.max(maxLat - minLat, 1e-6);
-    const spanLng = Math.max(maxLng - minLng, 1e-6);
-    // Preserve aspect (squash horizontal vs vertical) by normalizing to the smaller box.
-    const innerW = W - padX * 2;
-    const innerH = H - padY * 2;
-    const scale = Math.min(innerW / spanLng, innerH / spanLat);
-    const offX = padX + (innerW - spanLng * scale) / 2;
-    const offY = padY + (innerH - spanLat * scale) / 2;
+    // Equirectangular projection around the mean latitude — keeps the shape
+    // accurate at trip-scale distances instead of squashing N-S vs E-W.
+    let sumLat = 0;
+    for (const [lat] of points) sumLat += lat;
+    const meanLatRad = (sumLat / points.length) * (Math.PI / 180);
+    const kx = Math.cos(meanLatRad);
 
-    const pts = points.map(([lat, lng]) => {
-      const x = offX + (lng - minLng) * scale;
-      const y = offY + (maxLat - lat) * scale; // flip Y
-      return [x, y] as const;
+    const projected = points.map(([lat, lng]) => [lng * kx, -lat] as const);
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const [x, y] of projected) {
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    const spanX = Math.max(maxX - minX, 1e-6);
+    const spanY = Math.max(maxY - minY, 1e-6);
+
+    // Make the viewBox match the data aspect ratio so the line never squashes,
+    // regardless of the container's width/height. Container fills with `meet`.
+    // Normalize the longer axis to ~200 units for nice stroke width.
+    const aspect = spanX / spanY;
+    if (aspect >= 1) {
+      viewW = 200;
+      viewH = 200 / aspect;
+    } else {
+      viewH = 200;
+      viewW = 200 * aspect;
+    }
+    const innerW = viewW - pad * 2;
+    const innerH = viewH - pad * 2;
+    const sx = innerW / spanX;
+    const sy = innerH / spanY;
+
+    const pts = projected.map(([x, y]) => {
+      return [pad + (x - minX) * sx, pad + (y - minY) * sy] as const;
     });
     pathD = pts
       .map((p, i) => (i === 0 ? `M${p[0].toFixed(1)},${p[1].toFixed(1)}` : `L${p[0].toFixed(1)},${p[1].toFixed(1)}`))
@@ -68,8 +84,8 @@ export function RouteSparkline({
     >
       {hasPoints ? (
         <svg
-          viewBox={`0 0 ${W} ${H}`}
-          preserveAspectRatio="none"
+          viewBox={`0 0 ${viewW.toFixed(1)} ${viewH.toFixed(1)}`}
+          preserveAspectRatio="xMidYMid meet"
           width="100%"
           height="100%"
           style={{ display: "block" }}
@@ -78,13 +94,22 @@ export function RouteSparkline({
             d={pathD}
             fill="none"
             stroke={color}
-            strokeWidth={2}
+            strokeWidth={2.4}
             strokeLinecap="round"
             strokeLinejoin="round"
             opacity={0.95}
+            vectorEffect="non-scaling-stroke"
           />
-          <circle cx={startCx} cy={startCy} r={3} fill={color} />
-          <circle cx={endCx} cy={endCy} r={3} fill="#1a1308" stroke={color} strokeWidth={1.5} />
+          <circle cx={startCx} cy={startCy} r={3.5} fill={color} vectorEffect="non-scaling-stroke" />
+          <circle
+            cx={endCx}
+            cy={endCy}
+            r={3.5}
+            fill="#1a1308"
+            stroke={color}
+            strokeWidth={1.8}
+            vectorEffect="non-scaling-stroke"
+          />
         </svg>
       ) : (
         <div
