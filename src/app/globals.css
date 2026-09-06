@@ -422,7 +422,15 @@ label.field > .lbl {
 }
 .modal { width: 440px; max-width: 100%; }
 
+/* OSM standard tiles → look nuit qui matche le thème kraft/blueprint.
+   Filtre appliqué uniquement sur les tuiles (pas sur les polylines/markers,
+   qui sont des overlays SVG au-dessus). */
+.tt-dark-tiles {
+  filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9) saturate(0.7);
+}
+
 @media print {
   body { background: white !important; color: black !important; }
   .topnav, .no-print { display: none !important; }
+  .tt-dark-tiles { filter: none !important; }
 }

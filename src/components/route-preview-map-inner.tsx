@@ -44,9 +44,9 @@ export function RoutePreviewMapInner({
       style={{ width: "100%", height: "100%", background: "#0f0c08" }}
     >
       <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-        subdomains="abcd"
-        maxZoom={18}
+        url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+        maxZoom={19}
+        className="tt-dark-tiles"
       />
       <FitTo points={points} />
       {points.length >= 2 && (
